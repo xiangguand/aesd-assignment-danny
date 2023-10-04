@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/sh
 
 # $1 : File Directory Path.
 # $2 : String to be searched in the specified directory path.

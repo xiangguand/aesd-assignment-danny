@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/sh
 
 # $1 : A full path to a file.
 # $2 : Text string which will be written within the file.

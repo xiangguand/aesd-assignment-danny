@@ -1,0 +1,1 @@
+export PATH=/home/danny/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin:/home/danny/.local/share/coursier/bin:/home/danny/Desktop/gcc-arm-9.2-2019.12-x86_64-aarch64-none-linux-gnu/bin/
