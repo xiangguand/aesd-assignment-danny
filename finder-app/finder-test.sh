@@ -5,13 +5,14 @@
 set -e
 set -u
 
+### Modify the path, so finder-test.sh can know conf directory
+cd etc/finder-app
+
 NUMFILES=10
 WRITESTR=AELD_IS_FUN
 WRITEDIR=/tmp
 username=$(cat conf/username.txt)
 
-### Modify the path, so finder-test.sh can know conf directory
-PATH=$PATH:/etc/finder-app
 
 if [ $# -lt 3 ]
 then
