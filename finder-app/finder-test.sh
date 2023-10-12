@@ -6,7 +6,7 @@ set -e
 set -u
 
 ### Modify the path, so finder-test.sh can know conf directory
-cd etc/finder-app
+cd /etc/finder-app
 
 NUMFILES=10
 WRITESTR=AELD_IS_FUN
@@ -33,7 +33,7 @@ MATCHSTR="The number of files are ${NUMFILES} and the number of matching lines a
 
 echo "Writing ${NUMFILES} files containing string ${WRITESTR} to ${WRITEDIR}"
 
-rm -rf "${WRITEDIR}"
+rm -f "/tmp/assignment4-result.txt"
 
 # create $WRITEDIR if not assignment1
 assignment=`cat conf/assignment.txt`
@@ -63,8 +63,8 @@ done
 
 OUTPUTSTRING=$(./finder.sh "$WRITEDIR" "$WRITESTR")
 
-# remove temporary directories
-rm -rf /tmp
+# remove test files
+rm -f "/tmp/assignment4-result.txt"
 
 set +e
 echo ${OUTPUTSTRING} | grep "${MATCHSTR}"
