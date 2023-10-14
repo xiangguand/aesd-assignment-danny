@@ -1,5 +1,6 @@
 CC := $(CROSS_COMPILE)gcc
 CFLAGS := -Wall -Wextra
+LDFLAGS := -lpthread
 
 SRC := aesdsocket.c
 TARGET = aesdsocket

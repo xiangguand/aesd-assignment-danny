@@ -98,21 +98,20 @@ static void *SocketClientThread(void * fd_) {
   while(!fg_sigint && !fg_sigterm) {
     bytes = recv(fd, buf, 204800, 0);
     if(bytes > 0) {
-      printf("Recv: %d\n", bytes);
-      printf("%s\n", buf);
+      // printf("Recv: %d\n", bytes);
+      // printf("%s\n", buf);
       writeToAesdFile(buf, bytes);
 
       FILE *f = fopen(WRITE_FILENAME, "rb");
       assert(NULL != f);
       fseek(f, 0, SEEK_END);
       long file_size = ftell(f);
-      printf("file size: %d\n", file_size);
       if(file_size > 0) {
         char *buffer = (char *)malloc(file_size);
         fseek(f, 0, SEEK_SET);
         fread(buffer, 1, file_size, f);
         send(fd, buffer, file_size, 0);
-        printf("Transmit: \n%s\n", buffer);
+        // printf("Transmit: \n%s\n", buffer);
         free(buffer);
       }
     }
@@ -126,10 +125,34 @@ static void *SocketClientThread(void * fd_) {
 
 
 
-
 int main(int argc, char *argv[]) {
   (void)argc;
   (void)argv;
+
+  pid_t pid;
+  pid = fork();
+
+  if(pid < 0) {
+    perror("Fork failed");
+    exit(EXIT_FAILURE);
+  }
+
+  if (pid > 0) {
+      exit(EXIT_SUCCESS);
+  }
+
+  umask(0);
+
+  pid_t sid;
+  sid = setsid();
+  if(sid < 0) {
+    perror("setsid failed");
+    exit(EXIT_FAILURE);
+  }
+
+  /* start daemon */
+
+
   int ret;
   
   //! Logging open
@@ -190,7 +213,6 @@ int main(int argc, char *argv[]) {
     goto cleanup;
   }
 
-
   ret = bind(sockfd, res->ai_addr, sizeof(struct sockaddr));
   if(-1 == ret) {
     printf("Fail to bind\n");
@@ -246,6 +268,7 @@ int main(int argc, char *argv[]) {
 
   void *para;
   pthread_join(thread, &para);
+  (void)para;
 
 
 cleanup:
