@@ -1,0 +1,16 @@
+#!/bin/sh
+
+case "$1" in
+    start)
+       	echo "Start executing aesdsocket daemon"
+	start-stop-daemon --start --name aesdsocket -a /usr/bin/aesdsocket -- -d
+	;;
+    stop)
+	echo "Stop aesdsocket daemon"
+	start-stop-daemon --stop --name aesdsocket
+	;;
+    *)
+	exit 1
+esac
+
+exit 0

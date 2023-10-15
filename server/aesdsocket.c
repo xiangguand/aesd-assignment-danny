@@ -28,21 +28,23 @@
 #define STR_CONCATE(a, b) a b
 #define WRITE_FILENAME   STR_CONCATE(WRITE_DIR, "/aesdsocketdata")
 
+static pthread_mutex_t file_mutex;
 static inline void writeToAesdFile(const char *data, int bytes) {
-  if(bytes < 0) {
+  if(bytes <= 0) {
     return;
   }
   FILE *f = fopen(WRITE_FILENAME, "a");
-  assert(NULL != f);
-  int write_bytes = fwrite(data, 1, bytes, f);
-  if(write_bytes != bytes) {
-    printf("Write bytes and bytes providing are not matched %d, %d\n", write_bytes, bytes);
+  if(NULL != f) {
+    int write_bytes = fwrite(data, 1, bytes, f);
+    if(write_bytes != bytes) {
+      printf("Write bytes and bytes providing are not matched %d, %d\n", write_bytes, bytes);
+    }
+    fclose(f);
   }
-  fclose(f);
 }
 
 /* Socket information */
-#define SOCKER_SERVER_HOST  "localhost"
+#define SOCKER_SERVER_HOST  "0.0.0.0"
 #define SOCKER_SERVER_PORT  "9000"
 const uint8_t server_ipv4_address[] = {127, 0, 0, 1};
 
@@ -64,6 +66,7 @@ static void *startSockerServerThread(void *fd_) {
   int sockfd = *((int *)fd_);
   free(fd_);
   int ret;
+  printf("Socket id: %d\n", sockfd);
   /* Hanlde client connection */
   while(!fg_sigint && !fg_sigterm) {
     int clienfd;
@@ -82,7 +85,11 @@ static void *startSockerServerThread(void *fd_) {
         break;
       }  
     }
+    else {
+      syslog(LOG_DEBUG, "File des is NULL\n");
+    }
   }
+  printf("End server handler\n");
 
   return NULL;
 }
@@ -100,25 +107,33 @@ static void *SocketClientThread(void * fd_) {
     if(bytes > 0) {
       // printf("Recv: %d\n", bytes);
       // printf("%s\n", buf);
+
+      /* Lock mutex */
+      int ret;
+      ret= pthread_mutex_lock(&file_mutex);
+      assert(0 == ret);
+
       writeToAesdFile(buf, bytes);
 
       FILE *f = fopen(WRITE_FILENAME, "rb");
-      assert(NULL != f);
-      fseek(f, 0, SEEK_END);
-      long file_size = ftell(f);
-      if(file_size > 0) {
-        char *buffer = (char *)malloc(file_size);
-        fseek(f, 0, SEEK_SET);
-        fread(buffer, 1, file_size, f);
-        send(fd, buffer, file_size, 0);
-        // printf("Transmit: \n%s\n", buffer);
-        free(buffer);
+      if(NULL != f) {
+        fseek(f, 0, SEEK_END);
+        long file_size = ftell(f);
+        if(file_size > 0) {
+          char *buffer = (char *)malloc(file_size);
+          fseek(f, 0, SEEK_SET);
+          fread(buffer, 1, file_size, f);
+          send(fd, buffer, file_size, 0);
+          // printf("Transmit: \n%s\n", buffer);
+          free(buffer);
+        }
       }
-    }
-    else {
-      usleep(20*1000);
+      ret = pthread_mutex_unlock(&file_mutex);
+      assert(0 == ret);
+      /* Unlock mutex */
     }
   }
+  printf("End client handler\n");
 
   return NULL;
 }
@@ -172,21 +187,11 @@ int main(int argc, char *argv[]) {
     printf("Directory already exists\n");
   }
 
-  
-  /* Create a socket server with port 9000 */
-  int sockfd;
-
-  sockfd = socket(AF_INET, SOCK_STREAM, 0);
-  if(-1 == sockfd) {
-    printf("Fail to create an endpoint\n");
-    return -1;
-  }
-  printf("Create an endpoint for communication successfully. %d\n", sockfd);
 
   /* Buid the address information using getaddrinfo method */
   struct addrinfo hints = {
     .ai_flags = AI_PASSIVE,
-    .ai_family = AF_INET,
+    .ai_family = AF_UNSPEC,
     .ai_socktype = SOCK_STREAM,
 
   };
@@ -203,6 +208,16 @@ int main(int argc, char *argv[]) {
   
   assert(res != NULL);
   // printf("%s\n", r->ai_addr);
+  
+  /* Create a socket server with port 9000 */
+  int sockfd;
+
+  sockfd = socket(res->ai_family,res->ai_socktype,res->ai_protocol);
+  if(-1 == sockfd) {
+    printf("Fail to create an endpoint\n");
+    return -1;
+  }
+  printf("Create an endpoint for communication successfully. %d\n", sockfd);
 
   /* Setting socket file descriptor to non-blocking mode */
   int socket_file_flags = fcntl(sockfd, F_GETFL, 0);
@@ -211,6 +226,10 @@ int main(int argc, char *argv[]) {
   if(-1 == ret) {
     printf("Fail to change to non-blocking\n");
     goto cleanup;
+  }
+  int dummy =1;
+	if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &dummy, sizeof(int)) == -1) {	
+		perror("setsockopt error");
   }
 
   ret = bind(sockfd, res->ai_addr, sizeof(struct sockaddr));
@@ -249,6 +268,8 @@ int main(int argc, char *argv[]) {
     printf("Waiting forever for a signal to terminate program\n");
 
     /* Server handler thread */
+    ret = pthread_mutex_init(&file_mutex, NULL);
+    assert(0 == ret);
     int *sockfd_new = malloc(sizeof(int));
     *sockfd_new = sockfd;
     ret = pthread_create(&thread, NULL, startSockerServerThread, (void *)sockfd_new);
@@ -256,7 +277,6 @@ int main(int argc, char *argv[]) {
       printf("Fail to create pthreat");
       goto cleanup;
     }  
-
 
     if(fg_sigint) {
       printf("Caught SIGINT\n");
