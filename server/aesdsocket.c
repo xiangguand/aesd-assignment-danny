@@ -115,9 +115,6 @@ static void *SocketClientThread(void * fd_) {
         free(buffer);
       }
     }
-    else {
-      usleep(20*1000);
-    }
   }
 
   return NULL;
@@ -205,13 +202,13 @@ int main(int argc, char *argv[]) {
   printf("Create an endpoint for communication successfully. %d\n", sockfd);
 
   /* Setting socket file descriptor to non-blocking mode */
-  // int socket_file_flags = fcntl(sockfd, F_GETFL, 0);
-  // socket_file_flags |= O_NONBLOCK;
-  // ret = fcntl(sockfd, F_SETFL, socket_file_flags);
-  // if(-1 == ret) {
-  //   printf("Fail to change to non-blocking\n");
-  //   goto cleanup;
-  // }
+  int socket_file_flags = fcntl(sockfd, F_GETFL, 0);
+  socket_file_flags |= O_NONBLOCK;
+  ret = fcntl(sockfd, F_SETFL, socket_file_flags);
+  if(-1 == ret) {
+    printf("Fail to change to non-blocking\n");
+    goto cleanup;
+  }
   int dummy =1;
 	if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &dummy, sizeof(int)) == -1) {	
 		perror("setsockopt error");
