@@ -64,6 +64,7 @@ static void *startSockerServerThread(void *fd_) {
   int sockfd = *((int *)fd_);
   free(fd_);
   int ret;
+  printf("Socket id: %d\n", sockfd);
   /* Hanlde client connection */
   while(!fg_sigint && !fg_sigterm) {
     int clienfd;
@@ -81,9 +82,6 @@ static void *startSockerServerThread(void *fd_) {
         printf("Fail to create pthreat");
         break;
       }  
-    }
-    else {
-      printf("Can not accept\n");
     }
   }
   printf("End server handler\n");
