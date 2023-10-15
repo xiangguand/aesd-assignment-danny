@@ -131,6 +131,7 @@ static void *SocketClientThread(void * fd_) {
       ret = pthread_mutex_unlock(&file_mutex);
       assert(0 == ret);
       /* Unlock mutex */
+      break;
     }
   }
   printf("End client handler\n");
