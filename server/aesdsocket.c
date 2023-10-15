@@ -172,21 +172,11 @@ int main(int argc, char *argv[]) {
     printf("Directory already exists\n");
   }
 
-  
-  /* Create a socket server with port 9000 */
-  int sockfd;
-
-  sockfd = socket(AF_INET, SOCK_STREAM, 0);
-  if(-1 == sockfd) {
-    printf("Fail to create an endpoint\n");
-    return -1;
-  }
-  printf("Create an endpoint for communication successfully. %d\n", sockfd);
 
   /* Buid the address information using getaddrinfo method */
   struct addrinfo hints = {
     .ai_flags = AI_PASSIVE,
-    .ai_family = AF_INET,
+    .ai_family = AF_UNSPEC,
     .ai_socktype = SOCK_STREAM,
 
   };
@@ -203,6 +193,16 @@ int main(int argc, char *argv[]) {
   
   assert(res != NULL);
   // printf("%s\n", r->ai_addr);
+  
+  /* Create a socket server with port 9000 */
+  int sockfd;
+
+  sockfd = socket(res->ai_family,res->ai_socktype,res->ai_protocol);
+  if(-1 == sockfd) {
+    printf("Fail to create an endpoint\n");
+    return -1;
+  }
+  printf("Create an endpoint for communication successfully. %d\n", sockfd);
 
   /* Setting socket file descriptor to non-blocking mode */
   int socket_file_flags = fcntl(sockfd, F_GETFL, 0);
