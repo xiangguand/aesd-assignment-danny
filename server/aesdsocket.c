@@ -82,7 +82,11 @@ static void *startSockerServerThread(void *fd_) {
         break;
       }  
     }
+    else {
+      printf("Can not accept\n");
+    }
   }
+  printf("End server handler\n");
 
   return NULL;
 }
@@ -116,6 +120,7 @@ static void *SocketClientThread(void * fd_) {
       }
     }
   }
+  printf("End client handler\n");
 
   return NULL;
 }
