@@ -182,7 +182,7 @@ int main(int argc, char *argv[]) {
   };
   struct addrinfo *res = NULL;
   printf("Get info\n");
-  ret = getaddrinfo(SOCKER_SERVER_HOST, SOCKER_SERVER_PORT, &hints, &res);
+  ret = getaddrinfo(NULL, SOCKER_SERVER_PORT, &hints, &res);
   if(-1 == ret) {
     printf("Get address info fail\n");
     goto cleanup;
