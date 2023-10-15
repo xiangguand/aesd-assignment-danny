@@ -28,21 +28,23 @@
 #define STR_CONCATE(a, b) a b
 #define WRITE_FILENAME   STR_CONCATE(WRITE_DIR, "/aesdsocketdata")
 
+static pthread_mutex_t file_mutex;
 static inline void writeToAesdFile(const char *data, int bytes) {
-  if(bytes < 0) {
+  if(bytes <= 0) {
     return;
   }
   FILE *f = fopen(WRITE_FILENAME, "a");
-  assert(NULL != f);
-  int write_bytes = fwrite(data, 1, bytes, f);
-  if(write_bytes != bytes) {
-    printf("Write bytes and bytes providing are not matched %d, %d\n", write_bytes, bytes);
+  if(NULL != f) {
+    int write_bytes = fwrite(data, 1, bytes, f);
+    if(write_bytes != bytes) {
+      printf("Write bytes and bytes providing are not matched %d, %d\n", write_bytes, bytes);
+    }
+    fclose(f);
   }
-  fclose(f);
 }
 
 /* Socket information */
-#define SOCKER_SERVER_HOST  "localhost"
+#define SOCKER_SERVER_HOST  "0.0.0.0"
 #define SOCKER_SERVER_PORT  "9000"
 const uint8_t server_ipv4_address[] = {127, 0, 0, 1};
 
@@ -83,6 +85,9 @@ static void *startSockerServerThread(void *fd_) {
         break;
       }  
     }
+    else {
+      syslog(LOG_DEBUG, "File des is NULL\n");
+    }
   }
   printf("End server handler\n");
 
@@ -100,22 +105,32 @@ static void *SocketClientThread(void * fd_) {
   while(!fg_sigint && !fg_sigterm) {
     bytes = recv(fd, buf, 204800, 0);
     if(bytes > 0) {
-      printf("Recv: %d\n", bytes);
-      printf("%s\n", buf);
+      // printf("Recv: %d\n", bytes);
+      // printf("%s\n", buf);
+
+      /* Lock mutex */
+      int ret;
+      ret= pthread_mutex_lock(&file_mutex);
+      assert(0 == ret);
+
       writeToAesdFile(buf, bytes);
 
       FILE *f = fopen(WRITE_FILENAME, "rb");
-      assert(NULL != f);
-      fseek(f, 0, SEEK_END);
-      long file_size = ftell(f);
-      if(file_size > 0) {
-        char *buffer = (char *)malloc(file_size);
-        fseek(f, 0, SEEK_SET);
-        fread(buffer, 1, file_size, f);
-        send(fd, buffer, file_size, 0);
-        // printf("Transmit: \n%s\n", buffer);
-        free(buffer);
+      if(NULL != f) {
+        fseek(f, 0, SEEK_END);
+        long file_size = ftell(f);
+        if(file_size > 0) {
+          char *buffer = (char *)malloc(file_size);
+          fseek(f, 0, SEEK_SET);
+          fread(buffer, 1, file_size, f);
+          send(fd, buffer, file_size, 0);
+          // printf("Transmit: \n%s\n", buffer);
+          free(buffer);
+        }
       }
+      ret = pthread_mutex_unlock(&file_mutex);
+      assert(0 == ret);
+      /* Unlock mutex */
     }
   }
   printf("End client handler\n");
@@ -182,7 +197,7 @@ int main(int argc, char *argv[]) {
   };
   struct addrinfo *res = NULL;
   printf("Get info\n");
-  ret = getaddrinfo(NULL, SOCKER_SERVER_PORT, &hints, &res);
+  ret = getaddrinfo(SOCKER_SERVER_HOST, SOCKER_SERVER_PORT, &hints, &res);
   if(-1 == ret) {
     printf("Get address info fail\n");
     goto cleanup;
@@ -253,6 +268,8 @@ int main(int argc, char *argv[]) {
     printf("Waiting forever for a signal to terminate program\n");
 
     /* Server handler thread */
+    ret = pthread_mutex_init(&file_mutex, NULL);
+    assert(0 == ret);
     int *sockfd_new = malloc(sizeof(int));
     *sockfd_new = sockfd;
     ret = pthread_create(&thread, NULL, startSockerServerThread, (void *)sockfd_new);
@@ -260,7 +277,6 @@ int main(int argc, char *argv[]) {
       printf("Fail to create pthreat");
       goto cleanup;
     }  
-
 
     if(fg_sigint) {
       printf("Caught SIGINT\n");
