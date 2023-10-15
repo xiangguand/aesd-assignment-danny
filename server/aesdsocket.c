@@ -98,8 +98,8 @@ static void *SocketClientThread(void * fd_) {
   while(!fg_sigint && !fg_sigterm) {
     bytes = recv(fd, buf, 204800, 0);
     if(bytes > 0) {
-      // printf("Recv: %d\n", bytes);
-      // printf("%s\n", buf);
+      printf("Recv: %d\n", bytes);
+      printf("%s\n", buf);
       writeToAesdFile(buf, bytes);
 
       FILE *f = fopen(WRITE_FILENAME, "rb");
