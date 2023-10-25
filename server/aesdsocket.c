@@ -27,7 +27,7 @@
 #include <syslog.h>
 
 /* Force close the printf */
-#define printf(...)  ;
+#define printf(...) ;
 
 /* Assignment information */
 #define WRITE_DIR   "/var/tmp"
@@ -185,35 +185,27 @@ int main(int argc, char *argv[]) {
 
   if(argc == 2 && strcmp("-d", argv[1]) == 0) {
     /* start daemon */
-    goto aesdsocket_daemon;
+    pid_t pid;
+    pid = fork();
+
+    if(pid < 0) {
+      perror("Fork failed");
+      exit(EXIT_FAILURE);
+    }
+
+    if (pid > 0) {
+        exit(EXIT_SUCCESS);
+    }
+
+    pid_t sid;
+    sid = setsid();
+    if(sid < 0) {
+      perror("setsid failed");
+      exit(EXIT_FAILURE);
+    }
   }
-  else {
-    goto aesdsocket_nodaemon;
-  }
-  pid_t pid;
-  pid_t sid;
+
   int ret;
-
-aesdsocket_daemon:
-
-  pid = fork();
-
-  if(pid < 0) {
-    perror("Fork failed");
-    exit(EXIT_FAILURE);
-  }
-
-  if (pid > 0) {
-      exit(EXIT_SUCCESS);
-  }
-
-  sid = setsid();
-  if(sid < 0) {
-    perror("setsid failed");
-    exit(EXIT_FAILURE);
-  }
-
-aesdsocket_nodaemon:
   
   //! Logging open
   openlog("AESD-Assignment5", 0, LOG_USER);
