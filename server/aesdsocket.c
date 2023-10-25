@@ -11,6 +11,7 @@
 #include <assert.h>
 #include <pthread.h>
 #include <fcntl.h>
+#include <time.h>
 
 /* Include signal header files */
 #include <signal.h>
@@ -20,8 +21,13 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
+#include "thread_para.h"
+
 /* Syslog, refer from https://linux.die.net/man/3/syslog */
 #include <syslog.h>
+
+/* Force close the printf */
+#define printf(...)  ;
 
 /* Assignment information */
 #define WRITE_DIR   "/var/tmp"
@@ -65,8 +71,13 @@ static void *SocketClientThread(void * fd_);
 static void *startSockerServerThread(void *fd_) {
   int sockfd = *((int *)fd_);
   free(fd_);
-  int ret;
+  int ret = 0;
+  struct timespec tp, prev_tp;
+  ret = clock_gettime(CLOCK_MONOTONIC, &prev_tp);
+  char buf[200];
   printf("Socket id: %d\n", sockfd);
+  threadPara_t *head = NULL;
+  threadPara_t *node = NULL;
   /* Hanlde client connection */
   while(!fg_sigint && !fg_sigterm) {
     int clienfd;
@@ -76,19 +87,42 @@ static void *startSockerServerThread(void *fd_) {
     if(-1 != clienfd) {
       printf("Accept successfully from %s:%d\n", inet_ntoa(client_address.sin_addr), ntohs(client_address.sin_port));
     
-      pthread_t thread;
+      node = createThreadPara(&head);
       int *clientid_new = malloc(sizeof(int));
       *clientid_new = clienfd;
-      ret = pthread_create(&thread, NULL, SocketClientThread, (void *)clientid_new);
+      ret = pthread_create(&node->thread_, NULL, SocketClientThread, (void *)clientid_new);
+      assert(0 == ret);
       if(ret != 0) {
         printf("Fail to create pthreat");
         break;
-      }  
+      }
     }
     else {
       syslog(LOG_DEBUG, "File des is NULL\n");
     }
+
+    ret = clock_gettime(CLOCK_MONOTONIC, &tp);
+    assert(0 == ret);
+    if(tp.tv_sec - prev_tp.tv_sec >= 10) {
+      printf("===== Write time =====\n");
+      ret = pthread_mutex_lock(&file_mutex);
+      assert(0 == ret);
+      printf("===== LOCK =====\n");
+      time_t currentTime;
+      struct tm* timeInfo;
+      time(&currentTime);
+      timeInfo = localtime(&currentTime);
+      ret = strftime(buf, sizeof(buf), "timestamp: %a, %d %b %Y %H:%M:%S %z", timeInfo);
+      buf[ret++] = '\n';
+      buf[ret++] = '\0';
+      writeToAesdFile(buf, ret);
+      ret = pthread_mutex_unlock(&file_mutex);
+      assert(0 == ret);
+      printf("===== UNLOCK =====\n");
+      prev_tp.tv_sec = tp.tv_sec;
+    }
   }
+  disposeThreadPara(head);
   printf("End server handler\n");
 
   return NULL;
@@ -100,8 +134,10 @@ static void *SocketClientThread(void * fd_) {
   free(fd_);
 
   // Request 2048 bytes buffer
+  int ret;
+  assert(0 == ret);
   char buf[204800];
-  int bytes;
+  int bytes = 0;
   while(!fg_sigint && !fg_sigterm) {
     bytes = recv(fd, buf, 204800, 0);
     if(bytes > 0) {
@@ -110,8 +146,9 @@ static void *SocketClientThread(void * fd_) {
 
       /* Lock mutex */
       int ret;
-      ret= pthread_mutex_lock(&file_mutex);
+      ret = pthread_mutex_lock(&file_mutex);
       assert(0 == ret);
+      printf("===== LOCK =====\n");
 
       writeToAesdFile(buf, bytes);
 
@@ -120,7 +157,7 @@ static void *SocketClientThread(void * fd_) {
         fseek(f, 0, SEEK_END);
         long file_size = ftell(f);
         if(file_size > 0) {
-          char *buffer = (char *)malloc(file_size);
+          char *buffer = (char *)malloc(file_size+1);
           fseek(f, 0, SEEK_SET);
           fread(buffer, 1, file_size, f);
           send(fd, buffer, file_size, 0);
@@ -130,6 +167,7 @@ static void *SocketClientThread(void * fd_) {
       }
       ret = pthread_mutex_unlock(&file_mutex);
       assert(0 == ret);
+      printf("===== UNLOCK =====\n");
       /* Unlock mutex */
       break;
     }
@@ -145,6 +183,15 @@ int main(int argc, char *argv[]) {
   (void)argc;
   (void)argv;
 
+  if(argc == 2 && strcmp("-d", argv[1]) == 0) {
+    /* start daemon */
+    goto aesdsocket_daemon;
+  }
+  else {
+    goto aesdsocket_nodaemon;
+  }
+
+aesdsocket_daemon:
   pid_t pid;
   pid = fork();
 
@@ -157,8 +204,6 @@ int main(int argc, char *argv[]) {
       exit(EXIT_SUCCESS);
   }
 
-  umask(0);
-
   pid_t sid;
   sid = setsid();
   if(sid < 0) {
@@ -166,9 +211,7 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
-  /* start daemon */
-
-
+aesdsocket_nodaemon:
   int ret;
   
   //! Logging open
@@ -248,7 +291,7 @@ int main(int argc, char *argv[]) {
   printf("Start listening\n");
 
 
-  pthread_t thread;
+  pthread_t thread = 0;
   /* Signal handling */
   struct sigaction new_actions;
   bool success = true;
@@ -300,7 +343,6 @@ cleanup:
   }
   
   printf("Deleting aesdsocketdata ...\n");
-
   system("rm" " -f " WRITE_FILENAME);
   closelog();
 
