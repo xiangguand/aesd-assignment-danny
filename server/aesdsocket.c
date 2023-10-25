@@ -190,9 +190,12 @@ int main(int argc, char *argv[]) {
   else {
     goto aesdsocket_nodaemon;
   }
+  pid_t pid;
+  pid_t sid;
+  int ret;
 
 aesdsocket_daemon:
-  pid_t pid;
+
   pid = fork();
 
   if(pid < 0) {
@@ -204,7 +207,6 @@ aesdsocket_daemon:
       exit(EXIT_SUCCESS);
   }
 
-  pid_t sid;
   sid = setsid();
   if(sid < 0) {
     perror("setsid failed");
@@ -212,7 +214,6 @@ aesdsocket_daemon:
   }
 
 aesdsocket_nodaemon:
-  int ret;
   
   //! Logging open
   openlog("AESD-Assignment5", 0, LOG_USER);
