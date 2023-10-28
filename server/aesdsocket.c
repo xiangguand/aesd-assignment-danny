@@ -73,9 +73,9 @@ static void *startSockerServerThread(void *fd_) {
   free(fd_);
   int ret = 0;
   struct timespec tp, prev_tp;
-  ret = clock_gettime(CLOCK_MONOTONIC, &prev_tp);
   char buf[200];
   printf("Socket id: %d\n", sockfd);
+  bool fg_start_write_timestamp = false;
   threadPara_t *head = NULL;
   threadPara_t *node = NULL;
   /* Hanlde client connection */
@@ -85,6 +85,13 @@ static void *startSockerServerThread(void *fd_) {
     socklen_t client_socket_len = sizeof(struct sockaddr_in);
     clienfd = accept(sockfd, (struct sockaddr *)&client_address, &client_socket_len);
     if(-1 != clienfd) {
+      if(false == fg_start_write_timestamp) {
+        ret = clock_gettime(CLOCK_MONOTONIC, &prev_tp);
+        if(0 != ret) {
+          syslog(LOG_DEBUG, "clock_gettime error\n");
+        }
+        fg_start_write_timestamp = true;
+      }
       printf("Accept successfully from %s:%d\n", inet_ntoa(client_address.sin_addr), ntohs(client_address.sin_port));
     
       node = createThreadPara(&head);
@@ -105,7 +112,7 @@ static void *startSockerServerThread(void *fd_) {
 
     ret = clock_gettime(CLOCK_MONOTONIC, &tp);
     assert(0 == ret);
-    if(tp.tv_sec - prev_tp.tv_sec >= 10) {
+    if(fg_start_write_timestamp && tp.tv_sec - prev_tp.tv_sec >= 10) {
       printf("===== Write time =====\n");
       ret = pthread_mutex_lock(&file_mutex);
       assert(0 == ret);
