@@ -24,10 +24,10 @@
 #include "thread_para.h"
 
 /* Syslog, refer from https://linux.die.net/man/3/syslog */
-// #include <syslog.h>
+#include <syslog.h>
 
 /* Force close the printf */
-#define printf(...) ;
+// #define printf(...) ;
 
 /* Assignment information */
 #define WRITE_DIR   "/var/tmp"
@@ -98,7 +98,7 @@ static void *startSockerServerThread(void *fd_) {
       }
     }
     else {
-      // syslog(LOG_DEBUG, "File des is NULL\n");
+      syslog(LOG_DEBUG, "File des is NULL\n");
     }
 
     ret = clock_gettime(CLOCK_MONOTONIC, &tp);
@@ -182,7 +182,6 @@ static void *SocketClientThread(void * fd_) {
 int main(int argc, char *argv[]) {
   (void)argc;
   (void)argv;
-  printf("Start aesdscoekt\n");
 
   if(argc == 2 && strcmp("-d", argv[1]) == 0) {
     /* start daemon */
@@ -209,19 +208,19 @@ int main(int argc, char *argv[]) {
   int ret;
   
   //! Logging open
-  // openlog("AESD-Assignment5", 0, LOG_USER);
+  openlog("AESD-Assignment5", 0, LOG_USER);
 
   /* Create AESD data folder */
   if(NULL == opendir(WRITE_DIR)) {
     // directory does not exist
-    // syslog(LOG_DEBUG, "Create directory %s\n", WRITE_DIR);
+    syslog(LOG_DEBUG, "Create directory %s\n", WRITE_DIR);
     ret = mkdir(WRITE_DIR, 0775);
     assert(0 == ret);
     printf("Create directory %s\n", WRITE_DIR);
   }
   else {
     // directory already exists
-    // syslog(LOG_DEBUG, "Directory already exists\n");
+    syslog(LOG_DEBUG, "Directory already exists\n");
     printf("Directory already exists\n");
   }
 
@@ -338,7 +337,7 @@ cleanup:
   
   printf("Deleting aesdsocketdata ...\n");
   system("rm" " -f " WRITE_FILENAME);
-  // closelog();
+  closelog();
 
   return 0;
 }
