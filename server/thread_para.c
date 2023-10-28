@@ -12,7 +12,7 @@ static threadPara_t *genNode() {
 
 threadPara_t *createThreadPara(threadPara_t **head) {
   threadPara_t *node = genNode();
-  if(!*head) {
+  if(!(*head)) {
     *head = node;
   }
   else {
@@ -23,13 +23,11 @@ threadPara_t *createThreadPara(threadPara_t **head) {
 }
 
 void appendThreadPara(threadPara_t *head, threadPara_t *node) {
-  if(!head) {
-    createThreadPara(&head);
-  }
-  else {
-    while(head->next_ == NULL) {
-      head->next_ = node;
+  if(head) {
+    while(head->next_ != NULL) {
+      head = head->next_;
     }
+    head->next_ = node;
   }
 }
 

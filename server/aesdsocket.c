@@ -27,7 +27,7 @@
 #include <syslog.h>
 
 /* Force close the printf */
-// #define printf(...) ;
+#define printf(...) ;
 
 /* Assignment information */
 #define WRITE_DIR   "/var/tmp"
@@ -96,6 +96,8 @@ static void *startSockerServerThread(void *fd_) {
         printf("Fail to create pthreat");
         break;
       }
+      void *ptr = NULL;
+      pthread_join(node->thread_, &ptr) ;
     }
     else {
       syslog(LOG_DEBUG, "File des is NULL\n");
@@ -134,9 +136,9 @@ static void *SocketClientThread(void * fd_) {
   free(fd_);
 
   // Request 2048 bytes buffer
-  int ret;
+  int ret = 0;
   assert(0 == ret);
-  char buf[204800];
+  char buf[204800] = {0};
   int bytes = 0;
   while(!fg_sigint && !fg_sigterm) {
     bytes = recv(fd, buf, 204800, 0);
@@ -145,7 +147,6 @@ static void *SocketClientThread(void * fd_) {
       // printf("%s\n", buf);
 
       /* Lock mutex */
-      int ret;
       ret = pthread_mutex_lock(&file_mutex);
       assert(0 == ret);
       printf("===== LOCK =====\n");
@@ -157,13 +158,12 @@ static void *SocketClientThread(void * fd_) {
         fseek(f, 0, SEEK_END);
         long file_size = ftell(f);
         if(file_size > 0) {
-          char *buffer = (char *)malloc(file_size+1);
           fseek(f, 0, SEEK_SET);
-          fread(buffer, 1, file_size, f);
-          send(fd, buffer, file_size, 0);
-          // printf("Transmit: \n%s\n", buffer);
-          free(buffer);
+          fread(buf, 1, file_size, f);
+          send(fd, buf, file_size, 0);
+          printf("Transmit: \n%s\n", buf);
         }
+        fclose(f);
       }
       ret = pthread_mutex_unlock(&file_mutex);
       assert(0 == ret);
@@ -185,7 +185,7 @@ int main(int argc, char *argv[]) {
 
   if(argc == 2 && strcmp("-d", argv[1]) == 0) {
     /* start daemon */
-    pid_t pid;
+    pid_t pid = 0;
     pid = fork();
 
     if(pid < 0) {
@@ -205,13 +205,14 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  int ret;
+  int ret = -1;
   
   //! Logging open
   openlog("AESD-Assignment5", 0, LOG_USER);
 
   /* Create AESD data folder */
-  if(NULL == opendir(WRITE_DIR)) {
+  DIR *dir = opendir(WRITE_DIR);
+  if(NULL == dir) {
     // directory does not exist
     syslog(LOG_DEBUG, "Create directory %s\n", WRITE_DIR);
     ret = mkdir(WRITE_DIR, 0775);
@@ -222,6 +223,7 @@ int main(int argc, char *argv[]) {
     // directory already exists
     syslog(LOG_DEBUG, "Directory already exists\n");
     printf("Directory already exists\n");
+    closedir(dir);
   }
 
 
@@ -283,10 +285,9 @@ int main(int argc, char *argv[]) {
   }
   printf("Start listening\n");
 
-
   pthread_t thread = 0;
   /* Signal handling */
-  struct sigaction new_actions;
+  struct sigaction new_actions = {0};
   bool success = true;
   memset(&new_actions, 0 ,sizeof(sigaction));
   new_actions.sa_flags = SA_SIGINFO;
@@ -323,7 +324,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  void *para;
+  void *para = NULL;
   pthread_join(thread, &para);
   (void)para;
 
