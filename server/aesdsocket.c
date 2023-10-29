@@ -11,6 +11,7 @@
 #include <assert.h>
 #include <pthread.h>
 #include <fcntl.h>
+#include <time.h>
 
 /* Include signal header files */
 #include <signal.h>
@@ -20,8 +21,13 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
+#include "thread_para.h"
+
 /* Syslog, refer from https://linux.die.net/man/3/syslog */
 #include <syslog.h>
+
+/* Force close the printf */
+#define printf(...) ;
 
 /* Assignment information */
 #define WRITE_DIR   "/var/tmp"
@@ -65,8 +71,13 @@ static void *SocketClientThread(void * fd_);
 static void *startSockerServerThread(void *fd_) {
   int sockfd = *((int *)fd_);
   free(fd_);
-  int ret;
+  int ret = 0;
+  struct timespec tp, prev_tp;
+  char buf[200];
   printf("Socket id: %d\n", sockfd);
+  bool fg_start_write_timestamp = false;
+  threadPara_t *head = NULL;
+  threadPara_t *node = NULL;
   /* Hanlde client connection */
   while(!fg_sigint && !fg_sigterm) {
     int clienfd;
@@ -74,21 +85,53 @@ static void *startSockerServerThread(void *fd_) {
     socklen_t client_socket_len = sizeof(struct sockaddr_in);
     clienfd = accept(sockfd, (struct sockaddr *)&client_address, &client_socket_len);
     if(-1 != clienfd) {
+      if(false == fg_start_write_timestamp) {
+        ret = clock_gettime(CLOCK_MONOTONIC, &prev_tp);
+        if(0 != ret) {
+          syslog(LOG_DEBUG, "clock_gettime error\n");
+        }
+        fg_start_write_timestamp = true;
+      }
       printf("Accept successfully from %s:%d\n", inet_ntoa(client_address.sin_addr), ntohs(client_address.sin_port));
     
-      pthread_t thread;
+      node = createThreadPara(&head);
       int *clientid_new = malloc(sizeof(int));
       *clientid_new = clienfd;
-      ret = pthread_create(&thread, NULL, SocketClientThread, (void *)clientid_new);
+      ret = pthread_create(&node->thread_, NULL, SocketClientThread, (void *)clientid_new);
+      assert(0 == ret);
       if(ret != 0) {
         printf("Fail to create pthreat");
         break;
-      }  
+      }
+      void *ptr = NULL;
+      pthread_join(node->thread_, &ptr) ;
     }
     else {
       syslog(LOG_DEBUG, "File des is NULL\n");
     }
+
+    ret = clock_gettime(CLOCK_MONOTONIC, &tp);
+    assert(0 == ret);
+    if(fg_start_write_timestamp && tp.tv_sec - prev_tp.tv_sec >= 10) {
+      printf("===== Write time =====\n");
+      ret = pthread_mutex_lock(&file_mutex);
+      assert(0 == ret);
+      printf("===== LOCK =====\n");
+      time_t currentTime;
+      struct tm* timeInfo;
+      time(&currentTime);
+      timeInfo = localtime(&currentTime);
+      ret = strftime(buf, sizeof(buf), "timestamp: %a, %d %b %Y %H:%M:%S %z", timeInfo);
+      buf[ret++] = '\n';
+      buf[ret++] = '\0';
+      writeToAesdFile(buf, ret);
+      ret = pthread_mutex_unlock(&file_mutex);
+      assert(0 == ret);
+      printf("===== UNLOCK =====\n");
+      prev_tp.tv_sec = tp.tv_sec;
+    }
   }
+  disposeThreadPara(head);
   printf("End server handler\n");
 
   return NULL;
@@ -100,8 +143,10 @@ static void *SocketClientThread(void * fd_) {
   free(fd_);
 
   // Request 2048 bytes buffer
-  char buf[204800];
-  int bytes;
+  int ret = 0;
+  assert(0 == ret);
+  char buf[204800] = {0};
+  int bytes = 0;
   while(!fg_sigint && !fg_sigterm) {
     bytes = recv(fd, buf, 204800, 0);
     if(bytes > 0) {
@@ -109,9 +154,9 @@ static void *SocketClientThread(void * fd_) {
       // printf("%s\n", buf);
 
       /* Lock mutex */
-      int ret;
-      ret= pthread_mutex_lock(&file_mutex);
+      ret = pthread_mutex_lock(&file_mutex);
       assert(0 == ret);
+      printf("===== LOCK =====\n");
 
       writeToAesdFile(buf, bytes);
 
@@ -120,16 +165,16 @@ static void *SocketClientThread(void * fd_) {
         fseek(f, 0, SEEK_END);
         long file_size = ftell(f);
         if(file_size > 0) {
-          char *buffer = (char *)malloc(file_size);
           fseek(f, 0, SEEK_SET);
-          fread(buffer, 1, file_size, f);
-          send(fd, buffer, file_size, 0);
-          // printf("Transmit: \n%s\n", buffer);
-          free(buffer);
+          fread(buf, 1, file_size, f);
+          send(fd, buf, file_size, 0);
+          printf("Transmit: \n%s\n", buf);
         }
+        fclose(f);
       }
       ret = pthread_mutex_unlock(&file_mutex);
       assert(0 == ret);
+      printf("===== UNLOCK =====\n");
       /* Unlock mutex */
       break;
     }
@@ -145,37 +190,36 @@ int main(int argc, char *argv[]) {
   (void)argc;
   (void)argv;
 
-  pid_t pid;
-  pid = fork();
+  if(argc == 2 && strcmp("-d", argv[1]) == 0) {
+    /* start daemon */
+    pid_t pid = 0;
+    pid = fork();
 
-  if(pid < 0) {
-    perror("Fork failed");
-    exit(EXIT_FAILURE);
+    if(pid < 0) {
+      perror("Fork failed");
+      exit(EXIT_FAILURE);
+    }
+
+    if (pid > 0) {
+        exit(EXIT_SUCCESS);
+    }
+
+    pid_t sid;
+    sid = setsid();
+    if(sid < 0) {
+      perror("setsid failed");
+      exit(EXIT_FAILURE);
+    }
   }
 
-  if (pid > 0) {
-      exit(EXIT_SUCCESS);
-  }
-
-  umask(0);
-
-  pid_t sid;
-  sid = setsid();
-  if(sid < 0) {
-    perror("setsid failed");
-    exit(EXIT_FAILURE);
-  }
-
-  /* start daemon */
-
-
-  int ret;
+  int ret = -1;
   
   //! Logging open
   openlog("AESD-Assignment5", 0, LOG_USER);
 
   /* Create AESD data folder */
-  if(NULL == opendir(WRITE_DIR)) {
+  DIR *dir = opendir(WRITE_DIR);
+  if(NULL == dir) {
     // directory does not exist
     syslog(LOG_DEBUG, "Create directory %s\n", WRITE_DIR);
     ret = mkdir(WRITE_DIR, 0775);
@@ -186,6 +230,7 @@ int main(int argc, char *argv[]) {
     // directory already exists
     syslog(LOG_DEBUG, "Directory already exists\n");
     printf("Directory already exists\n");
+    closedir(dir);
   }
 
 
@@ -247,10 +292,9 @@ int main(int argc, char *argv[]) {
   }
   printf("Start listening\n");
 
-
-  pthread_t thread;
+  pthread_t thread = 0;
   /* Signal handling */
-  struct sigaction new_actions;
+  struct sigaction new_actions = {0};
   bool success = true;
   memset(&new_actions, 0 ,sizeof(sigaction));
   new_actions.sa_flags = SA_SIGINFO;
@@ -287,7 +331,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  void *para;
+  void *para = NULL;
   pthread_join(thread, &para);
   (void)para;
 
@@ -300,7 +344,6 @@ cleanup:
   }
   
   printf("Deleting aesdsocketdata ...\n");
-
   system("rm" " -f " WRITE_FILENAME);
   closelog();
 

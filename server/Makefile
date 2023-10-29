@@ -1,8 +1,8 @@
-CC := $(CROSS_COMPILE)gcc
-CFLAGS := -Wall -Wextra
-LDFLAGS := -lpthread
+CC ?= $(CROSS_COMPILE)gcc
+CFLAGS ?= -Wall -Wextra
+LDFLAGS ?= -lpthread
 
-SRC := aesdsocket.c
+SRC := aesdsocket.c thread_para.c
 TARGET = aesdsocket
 OBJS := $(SRC:.c=.o)
 
