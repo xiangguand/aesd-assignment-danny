@@ -38,6 +38,12 @@ int aesd_open(struct inode *inode, struct file *filp)
      * TODO: handle open
      */
     aesd_device.is_open_ = true;
+    
+    int i;
+    for(i=0;i<sizeof(aesd_device.cir_buf_.entry)/sizeof(struct aesd_buffer_entry);i++)
+    {
+        PDEBUG("[%d]: %s, %d", i, aesd_device.cir_buf_.entry[i].buffptr, aesd_device.cir_buf_.entry[i].size);
+    }
 
     return 0;
 }
