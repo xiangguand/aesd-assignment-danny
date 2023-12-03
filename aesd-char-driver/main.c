@@ -89,7 +89,8 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
         return -1;
     }
     PDEBUG("write %zu bytes with offset %lld",count,*f_pos);
-    for(int i=0;i<count;i++) {
+    int i;
+    for(i=0;i<count;i++) {
         PDEBUG("write %c", buf[i]);
     }
     /**
