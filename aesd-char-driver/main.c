@@ -37,14 +37,11 @@ int aesd_open(struct inode *inode, struct file *filp)
     /**
      * TODO: handle open
      */
-    aesd_device.is_open_ = true;
-    
-    int i;
-    PDEBUG("printout");
-    for(i=0;i<AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;i++)
-    {
-        PDEBUG("[%d]: %s, %d", i, aesd_device.cir_buf_.entry[i].buffptr, aesd_device.cir_buf_.entry[i].size);
+    if(aesd_device.is_open_) {
+        // device is already open
+        return -EBUSY;
     }
+    aesd_device.is_open_ = true;
 
     return 0;
 }
@@ -104,8 +101,16 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     entry.buffptr = buf;
     entry.size = count;
     aesd_circular_buffer_add_entry(&aesd_device.cir_buf_, &entry);
+
+    /* Print out buffer */
+#ifdef AESD_DEBUG
+    for(i=0;i<AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;i++)
+    {
+        PDEBUG("[%d]: %s, %d", i, aesd_device.cir_buf_.entry[i].buffptr, aesd_device.cir_buf_.entry[i].size);
+    }
+#endif /* AESD_DEBUG */
     
-    return 0;   
+    return count;
 }
 struct file_operations aesd_fops = {
     .owner =    THIS_MODULE,
