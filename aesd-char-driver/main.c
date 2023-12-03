@@ -70,12 +70,13 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
     /**
      * TODO: handle read
      */
+    size_t offset_rtn=0;
     struct aesd_buffer_entry *rtnentry = aesd_circular_buffer_find_entry_offset_for_fpos(&aesd_device.cir_buf_,
                                                 count,
-                                                (size_t *)f_pos);
+                                                &offset_rtn);
     PDEBUG("rtentry: %p", rtnentry);
     if(rtnentry) {
-        PDEBUG("rtentry: %p, %d", rtnentry->buffptr, rtnentry->size);
+        PDEBUG("rtentry: %p, %d, %d", rtnentry->buffptr, rtnentry->size, offset_rtn);
     }
 
     return retval;
@@ -88,10 +89,14 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
         return -1;
     }
     PDEBUG("write %zu bytes with offset %lld",count,*f_pos);
+    for(int i=0;i<count;i++) {
+        PDEBUG("write %c", buf[i]);
+    }
     /**
      * TODO: handle write
      */
     if(aesd_device.cir_buf_.full) {
+        PDEBUG("Circular buffer is full");
         return -ENOMEM;
     }
     struct aesd_buffer_entry entry;
