@@ -6,6 +6,7 @@
  * Linux Device Drivers example code.
  *
  * @author Dan Walkes
+ * @author Xiang Guan Deng
  * @date 2019-10-22
  * @copyright Copyright (c) 2019
  *
@@ -18,13 +19,17 @@
 #include <linux/cdev.h>
 #include <linux/fs.h> // file_operations
 #include "aesdchar.h"
+
+/* Circular buffer */
+#include "aesd-circular-buffer.h"
+
 int aesd_major =   0; // use dynamic major
 int aesd_minor =   0;
 
 MODULE_AUTHOR("Xiang Guan Deng");
 MODULE_LICENSE("Dual BSD/GPL");
 
-static struct aesd_dev aesd_device;
+static struct aesd_dev aesd_device = {.is_open_ = false};
 
 int aesd_open(struct inode *inode, struct file *filp)
 {
@@ -32,6 +37,8 @@ int aesd_open(struct inode *inode, struct file *filp)
     /**
      * TODO: handle open
      */
+    aesd_device.is_open_ = true;
+
     return 0;
 }
 
@@ -41,29 +48,51 @@ int aesd_release(struct inode *inode, struct file *filp)
     /**
      * TODO: handle release
      */
+    aesd_device.is_open_ = false;
     return 0;
 }
 
 ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
                 loff_t *f_pos)
 {
+    if(!aesd_device.is_open_) {
+        return -1;
+    }
     ssize_t retval = 0;
     PDEBUG("read %zu bytes with offset %lld",count,*f_pos);
     /**
      * TODO: handle read
      */
+    struct aesd_buffer_entry *rtnentry = aesd_circular_buffer_find_entry_offset_for_fpos(&aesd_device.cir_buf_,
+                                                count,
+                                                (size_t *)f_pos);
+    PDEBUG("rtentry: %p", rtnentry);
+    if(rtnentry) {
+        PDEBUG("rtentry: %p, %d", rtnentry->buffptr, rtnentry->size);
+    }
+
     return retval;
 }
 
 ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
                 loff_t *f_pos)
 {
-    ssize_t retval = -ENOMEM;
+    if(!aesd_device.is_open_) {
+        return -1;
+    }
     PDEBUG("write %zu bytes with offset %lld",count,*f_pos);
     /**
      * TODO: handle write
      */
-    return retval;
+    if(aesd_device.cir_buf_.full) {
+        return -ENOMEM;
+    }
+    struct aesd_buffer_entry entry;
+    entry.buffptr = buf;
+    entry.size = count;
+    aesd_circular_buffer_add_entry(&aesd_device.cir_buf_, &entry);
+    
+    return 0;   
 }
 struct file_operations aesd_fops = {
     .owner =    THIS_MODULE,
@@ -106,6 +135,7 @@ int aesd_init_module(void)
     /**
      * TODO: initialize the AESD specific portion of the device
      */
+    aesd_circular_buffer_init(&aesd_device.cir_buf_);
 
     result = aesd_setup_cdev(&aesd_device);
 
