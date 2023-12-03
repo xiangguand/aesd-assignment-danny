@@ -6,6 +6,7 @@
  * Linux Device Drivers example code.
  *
  * @author Dan Walkes
+ * @author Xiang-Guan Deng
  * @date 2019-10-22
  * @copyright Copyright (c) 2019
  *
@@ -21,10 +22,10 @@
 int aesd_major =   0; // use dynamic major
 int aesd_minor =   0;
 
-MODULE_AUTHOR("Your Name Here"); /** TODO: fill in your name **/
+MODULE_AUTHOR("Xiang Guan Deng"); /** TODO: fill in your name **/
 MODULE_LICENSE("Dual BSD/GPL");
 
-struct aesd_dev aesd_device;
+static struct aesd_dev aesd_device;
 
 int aesd_open(struct inode *inode, struct file *filp)
 {
@@ -91,6 +92,7 @@ static int aesd_setup_cdev(struct aesd_dev *dev)
 
 int aesd_init_module(void)
 {
+    PDEBUG("aesd module init");
     dev_t dev = 0;
     int result;
     result = alloc_chrdev_region(&dev, aesd_minor, 1,
@@ -117,6 +119,7 @@ int aesd_init_module(void)
 
 void aesd_cleanup_module(void)
 {
+    PDEBUG("aesd module cleanup");
     dev_t devno = MKDEV(aesd_major, aesd_minor);
 
     cdev_del(&aesd_device.cdev);
