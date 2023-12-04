@@ -129,7 +129,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 #ifdef AESD_DEBUG
     for(i=0;i<AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;i++)
     {
-        PDEBUG("[%d]: %s, %d, %d, %d, %d, %d", i, aesd_device.cir_buf_.entry[i].buffptr, aesd_device.cir_buf_.entry[i].size, 
+        PDEBUG("[%d]: %s, %d, %d, %d, %d", i, aesd_device.cir_buf_.entry[i].buffptr, aesd_device.cir_buf_.entry[i].size, 
                         aesd_device.cir_buf_.in_offs, aesd_device.cir_buf_.out_offs, aesd_device.cir_buf_.full);
     }
 #endif /* AESD_DEBUG */
