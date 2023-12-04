@@ -81,13 +81,15 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
         if(NULL == rtnentry) {
             break;
         }
-        PDEBUG("rtentry: %p, %d", rtnentry, char_offset);
+        PDEBUG("rtentry: %p, %u", rtnentry, char_offset);
         if(rtnentry) {
+            char_offset += rtnentry->size;
             PDEBUG("rtentry: %p, %d, %d", rtnentry->buffptr, rtnentry->size, offset_rtn);
             memcpy(buf, rtnentry->buffptr, rtnentry->size);
             kfree(rtnentry->buffptr);
+            rtnentry->buffptr = NULL;
+            rtnentry->size = 0;
         }
-        char_offset += rtnentry->size;
     }
 
     return char_offset;
