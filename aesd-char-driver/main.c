@@ -19,6 +19,7 @@
 #include <linux/cdev.h>
 #include <linux/fs.h> // file_operations
 #include<linux/slab.h>
+#include <linux/mutex.h>
 #include "aesdchar.h"
 
 /* Circular buffer */
@@ -26,6 +27,8 @@
 
 int aesd_major =   0; // use dynamic major
 int aesd_minor =   0;
+
+static struct mutex aesd_lock;
 
 MODULE_AUTHOR("Xiang Guan Deng");
 MODULE_LICENSE("Dual BSD/GPL");
@@ -68,6 +71,8 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
     /**
      * TODO: handle read
      */
+    mutex_lock(&aesd_lock);
+
     size_t offset_rtn = 0;
     aesd_device.cir_buf_.out_offs;
     ssize_t char_offset = 0;
@@ -84,13 +89,14 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
         PDEBUG("rtentry: %p, %u", rtnentry, char_offset);
         if(rtnentry) {
             PDEBUG("rtentry: %s, %d, %d", rtnentry->buffptr, rtnentry->size, offset_rtn);
-            memcpy(&buf[char_offset], rtnentry->buffptr, rtnentry->size);
+            memcpy(&buf[char_offset], &rtnentry->buffptr[offset_rtn], rtnentry->size);
             char_offset += rtnentry->size;
             kfree(rtnentry->buffptr);
             rtnentry->buffptr = NULL;
             rtnentry->size = 0;
         }
     }
+    mutex_unlock(&aesd_lock);
 
     return char_offset;
 }
@@ -103,9 +109,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     }
     PDEBUG("write %zu bytes with offset %lld",count,*f_pos);
     int i;
-    for(i=0;i<count;i++) {
-        PDEBUG("write %c", buf[i]);
-    }
+
     /**
      * TODO: handle write
      */
@@ -116,6 +120,8 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     else if(0 == count) {
         return 0;
     }
+    
+    mutex_lock(&aesd_lock);
     struct aesd_buffer_entry entry;
     char *malloc_buf = kmalloc(count * sizeof(char) + 1, GFP_ATOMIC);
     memcpy(malloc_buf, buf, count*sizeof(char));
@@ -133,6 +139,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
                         aesd_device.cir_buf_.in_offs, aesd_device.cir_buf_.out_offs, aesd_device.cir_buf_.full);
     }
 #endif /* AESD_DEBUG */
+    mutex_unlock(&aesd_lock);
     
     return count;
 }
