@@ -74,7 +74,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
 
     struct aesd_buffer_entry *rtnentry;
 
-    while(1) {
+    while(count > char_offset) {
         rtnentry = aesd_circular_buffer_find_entry_offset_for_fpos(&aesd_device.cir_buf_,
                                                     char_offset,
                                                     &offset_rtn);
@@ -84,7 +84,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
         PDEBUG("rtentry: %p, %u", rtnentry, char_offset);
         if(rtnentry) {
             char_offset += rtnentry->size;
-            PDEBUG("rtentry: %p, %d, %d", rtnentry->buffptr, rtnentry->size, offset_rtn);
+            PDEBUG("rtentry: %s, %d, %d", rtnentry->buffptr, rtnentry->size, offset_rtn);
             memcpy(buf, rtnentry->buffptr, rtnentry->size);
             kfree(rtnentry->buffptr);
             rtnentry->buffptr = NULL;
@@ -117,10 +117,10 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
         return 0;
     }
     struct aesd_buffer_entry entry;
-    char *malloc_buf = kmalloc(count * sizeof(char), GFP_ATOMIC);
+    char *malloc_buf = kmalloc(count * sizeof(char) + 1, GFP_ATOMIC);
     memcpy(malloc_buf, buf, count*sizeof(char));
-    malloc_buf[count-1] = '\0';
-    entry.size = count - 1;
+    malloc_buf[count] = '\0';
+    entry.size = count;
     entry.buffptr = malloc_buf;
     aesd_circular_buffer_add_entry(&aesd_device.cir_buf_, &entry);
     printk(KERN_INFO "%s", malloc_buf);
