@@ -70,7 +70,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
      */
     size_t offset_rtn = 0;
     aesd_device.cir_buf_.out_offs;
-    int char_offset = 0;
+    ssize_t char_offset = 0;
 
     struct aesd_buffer_entry *rtnentry;
 
@@ -81,17 +81,16 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
         if(NULL == rtnentry) {
             break;
         }
-        PDEBUG("rtentry: %p", rtnentry);
+        PDEBUG("rtentry: %p, %d", rtnentry, char_offset);
         if(rtnentry) {
             PDEBUG("rtentry: %p, %d, %d", rtnentry->buffptr, rtnentry->size, offset_rtn);
             memcpy(buf, rtnentry->buffptr, rtnentry->size);
             kfree(rtnentry->buffptr);
-            return rtnentry->size;
         }
         char_offset += rtnentry->size;
     }
 
-    return retval;
+    return char_offset;
 }
 
 ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
