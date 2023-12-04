@@ -67,13 +67,24 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
     /**
      * TODO: handle read
      */
-    size_t offset_rtn=0;
-    struct aesd_buffer_entry *rtnentry = aesd_circular_buffer_find_entry_offset_for_fpos(&aesd_device.cir_buf_,
-                                                count,
-                                                &offset_rtn);
-    PDEBUG("rtentry: %p", rtnentry);
-    if(rtnentry) {
-        PDEBUG("rtentry: %p, %d, %d", rtnentry->buffptr, rtnentry->size, offset_rtn);
+    size_t offset_rtn = 0;
+    aesd_device.cir_buf_.out_offs;
+    int char_offset = 0;
+
+    struct aesd_buffer_entry *rtnentry;
+
+    while(char_offset < offset_rtn) {
+        rtnentry = aesd_circular_buffer_find_entry_offset_for_fpos(&aesd_device.cir_buf_,
+                                                    char_offset,
+                                                    &offset_rtn);
+        PDEBUG("rtentry: %p", rtnentry);
+        if(rtnentry) {
+            PDEBUG("rtentry: %p, %d, %d", rtnentry->buffptr, rtnentry->size, offset_rtn);
+            memcpy(buf, rtnentry->buffptr, rtnentry->size);
+            kfree(rtnentry->buffptr);
+            return rtnentry->size;
+        }
+        char_offset += rtnentry->size;
     }
 
     return retval;
@@ -97,16 +108,24 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
         PDEBUG("Circular buffer is full");
         return -ENOMEM;
     }
+    else if(0 == count) {
+        return 0;
+    }
     struct aesd_buffer_entry entry;
-    entry.buffptr = buf;
-    entry.size = count;
+    char *malloc_buf = kmalloc(count * sizeof(char), GFP_ATOMIC);
+    memcpy(malloc_buf, buf, count*sizeof(char));
+    malloc_buf[count-1] = '\0';
+    entry.size = count - 1;
+    entry.buffptr = malloc_buf;
     aesd_circular_buffer_add_entry(&aesd_device.cir_buf_, &entry);
+    printk(KERN_INFO "%s", malloc_buf);
 
     /* Print out buffer */
 #ifdef AESD_DEBUG
     for(i=0;i<AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;i++)
     {
-        PDEBUG("[%d]: %s, %d", i, aesd_device.cir_buf_.entry[i].buffptr, aesd_device.cir_buf_.entry[i].size);
+        PDEBUG("[%d]: %s, %d, %d, %d, %d, %d", i, aesd_device.cir_buf_.entry[i].buffptr, aesd_device.cir_buf_.entry[i].size, 
+                        aesd_device.cir_buf_.in_offs, aesd_device.cir_buf_.out_offs, aesd_device.cir_buf_.full);
     }
 #endif /* AESD_DEBUG */
     
