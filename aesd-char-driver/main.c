@@ -113,14 +113,10 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     /**
      * TODO: handle write
      */
-    if(aesd_device.cir_buf_.full) {
-        PDEBUG("Circular buffer is full");
-        return -ENOMEM;
-    }
-    else if(0 == count) {
+    if(0 == count) {
         return 0;
     }
-    
+
     mutex_lock(&aesd_lock);
     struct aesd_buffer_entry entry;
     char *malloc_buf = kmalloc(count * sizeof(char) + 1, GFP_ATOMIC);
