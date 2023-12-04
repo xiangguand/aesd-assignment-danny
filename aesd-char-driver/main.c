@@ -74,10 +74,13 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
 
     struct aesd_buffer_entry *rtnentry;
 
-    while(char_offset < offset_rtn) {
+    while(1) {
         rtnentry = aesd_circular_buffer_find_entry_offset_for_fpos(&aesd_device.cir_buf_,
                                                     char_offset,
                                                     &offset_rtn);
+        if(NULL == rtnentry) {
+            break;
+        }
         PDEBUG("rtentry: %p", rtnentry);
         if(rtnentry) {
             PDEBUG("rtentry: %p, %d, %d", rtnentry->buffptr, rtnentry->size, offset_rtn);
