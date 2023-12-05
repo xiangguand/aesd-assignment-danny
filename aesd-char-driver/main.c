@@ -125,7 +125,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     entry.size = count;
     entry.buffptr = malloc_buf;
     aesd_circular_buffer_add_entry(&aesd_device.cir_buf_, &entry);
-    printk(KERN_INFO "%s", malloc_buf);
+    printk(KERN_INFO "%s, %p", malloc_buf, malloc_buf);
 
     /* Print out buffer */
 #ifdef AESD_DEBUG
