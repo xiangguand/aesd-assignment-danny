@@ -83,8 +83,8 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
         rtnentry = aesd_circular_buffer_find_entry_offset_for_fpos(&aesd_device.cir_buf_,
                                                     char_offset,
                                                     &offset_rtn);
-        mutex_unlock(&aesd_lock);
         if(NULL == rtnentry) {
+            mutex_unlock(&aesd_lock);
             break;
         }
         PDEBUG("rtentry: %p, %u", rtnentry, char_offset);
@@ -96,6 +96,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
             rtnentry->buffptr = NULL;
             rtnentry->size = 0;
         }
+        mutex_unlock(&aesd_lock);
     }
 
     return char_offset;
