@@ -71,7 +71,6 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
     /**
      * TODO: handle read
      */
-    mutex_lock(&aesd_lock);
 
     size_t offset_rtn = 0;
     aesd_device.cir_buf_.out_offs;
@@ -80,6 +79,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
     struct aesd_buffer_entry *rtnentry;
 
     while(count > char_offset) {
+        mutex_lock(&aesd_lock);
         rtnentry = aesd_circular_buffer_find_entry_offset_for_fpos(&aesd_device.cir_buf_,
                                                     char_offset,
                                                     &offset_rtn);
@@ -95,8 +95,8 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
             rtnentry->buffptr = NULL;
             rtnentry->size = 0;
         }
+        mutex_unlock(&aesd_lock);
     }
-    mutex_unlock(&aesd_lock);
 
     return char_offset;
 }
@@ -125,7 +125,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     entry.size = count;
     entry.buffptr = malloc_buf;
     aesd_circular_buffer_add_entry(&aesd_device.cir_buf_, &entry);
-    printk(KERN_INFO "%s, %p", malloc_buf, malloc_buf);
+    printk(KERN_INFO "%s", malloc_buf);
 
     /* Print out buffer */
 #ifdef AESD_DEBUG
