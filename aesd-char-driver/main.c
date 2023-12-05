@@ -28,7 +28,7 @@
 int aesd_major =   0; // use dynamic major
 int aesd_minor =   0;
 
-static struct mutex aesd_lock;
+static DEFINE_MUTEX(aesd_lock);
 
 MODULE_AUTHOR("Xiang Guan Deng");
 MODULE_LICENSE("Dual BSD/GPL");
