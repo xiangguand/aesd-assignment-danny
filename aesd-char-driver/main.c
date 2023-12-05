@@ -92,9 +92,6 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
             PDEBUG("rtentry: %s, %d, %d", rtnentry->buffptr, rtnentry->size, offset_rtn);
             memcpy(&buf[char_offset], &rtnentry->buffptr[offset_rtn], rtnentry->size);
             char_offset += rtnentry->size;
-            kfree(rtnentry->buffptr);
-            rtnentry->buffptr = NULL;
-            rtnentry->size = 0;
         }
         mutex_unlock(&aesd_lock);
         // break;
@@ -120,6 +117,13 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     }
 
     mutex_lock(&aesd_lock);
+
+    if(aesd_device.cir_buf_.full) {
+        // alread full, free the memory that will overlap
+        kfree(aesd_device.cir_buf_.entry[aesd_device.cir_buf_.in_offs].buffptr);
+        aesd_device.cir_buf_.entry[aesd_device.cir_buf_.in_offs].size = 0;
+    }
+
     struct aesd_buffer_entry entry;
     char *malloc_buf = kmalloc(count * sizeof(char) + 1, GFP_ATOMIC);
     memcpy(malloc_buf, buf, count*sizeof(char));
