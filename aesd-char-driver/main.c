@@ -97,6 +97,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
             rtnentry->size = 0;
         }
         mutex_unlock(&aesd_lock);
+        break;
     }
 
     return char_offset;
@@ -120,7 +121,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 
     mutex_lock(&aesd_lock);
     struct aesd_buffer_entry entry;
-    char *malloc_buf = kmalloc(count * sizeof(char) + 1, GFP_ATOMIC);
+    char *malloc_buf = kmalloc(count * sizeof(char) + 1, GFP_KERNEL);
     memcpy(malloc_buf, buf, count*sizeof(char));
     malloc_buf[count] = '\0';
     entry.size = count;
