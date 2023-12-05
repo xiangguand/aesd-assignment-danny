@@ -78,15 +78,15 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
 
     struct aesd_buffer_entry *rtnentry;
 
-    while(count > char_offset) {
+    // while(count > char_offset) {
         mutex_lock(&aesd_lock);
         rtnentry = aesd_circular_buffer_find_entry_offset_for_fpos(&aesd_device.cir_buf_,
                                                     char_offset,
                                                     &offset_rtn);
-        if(NULL == rtnentry) {
-            mutex_unlock(&aesd_lock);
-            break;
-        }
+        // if(NULL == rtnentry) {
+            // mutex_unlock(&aesd_lock);
+            // break;
+        // }
         PDEBUG("rtentry: %p, %u", rtnentry, char_offset);
         if(rtnentry) {
             PDEBUG("rtentry: %s, %d, %d", rtnentry->buffptr, rtnentry->size, offset_rtn);
@@ -97,8 +97,8 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
             rtnentry->size = 0;
         }
         mutex_unlock(&aesd_lock);
-        break;
-    }
+        // break;
+    // }
 
     return char_offset;
 }
@@ -121,13 +121,14 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 
     mutex_lock(&aesd_lock);
     struct aesd_buffer_entry entry;
-    char *malloc_buf = kmalloc(count * sizeof(char) + 1, GFP_KERNEL);
+    char *malloc_buf = kmalloc(count * sizeof(char) + 1, GFP_ATOMIC);
     memcpy(malloc_buf, buf, count*sizeof(char));
     malloc_buf[count] = '\0';
     entry.size = count;
     entry.buffptr = malloc_buf;
     aesd_circular_buffer_add_entry(&aesd_device.cir_buf_, &entry);
     printk(KERN_INFO "%s", malloc_buf);
+    mutex_unlock(&aesd_lock);
 
     /* Print out buffer */
 #ifdef AESD_DEBUG
@@ -137,7 +138,6 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
                         aesd_device.cir_buf_.in_offs, aesd_device.cir_buf_.out_offs, aesd_device.cir_buf_.full);
     }
 #endif /* AESD_DEBUG */
-    mutex_unlock(&aesd_lock);
     
     return count;
 }
