@@ -66,6 +66,10 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
     if(!aesd_device.is_open_) {
         return -1;
     }
+    if(aesd_device.index_ == aesd_device.count_) {
+        aesd_device.index_ = 0;
+        return 0;
+    }
     ssize_t retval = 0;
     PDEBUG("read %zu bytes with offset %lld",count,*f_pos);
     /**
@@ -97,10 +101,6 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
         // break;
     // }
     *f_pos = char_offset;
-    if(++aesd_device.index_ == aesd_device.count_) {
-        aesd_device.index_ = 0;
-        return 0;
-    }
 
     return rtnentry->size;
 }
