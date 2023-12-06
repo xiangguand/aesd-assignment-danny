@@ -114,6 +114,19 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     PDEBUG("write %zu bytes with offset %lld",count,*f_pos);
     int i;
 
+    if('\n' != buf[count-1]) {
+        if(aesd_device.last_malloc_buf_) {
+            aesd_device.last_malloc_sz_ += count * sizeof(char);
+            aesd_device.last_malloc_buf_ = krealloc(aesd_device.last_malloc_buf_, aesd_device.last_malloc_sz_, GFP_KERNEL);
+        }
+        else {
+            aesd_device.last_malloc_buf_ = kmalloc(count * sizeof(char), GFP_KERNEL);
+            aesd_device.last_malloc_sz_ = count * sizeof(char);
+        }
+        return count;
+    }
+
+
     /**
      * TODO: handle write
      */
@@ -133,7 +146,15 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     }
 
     struct aesd_buffer_entry entry;
-    char *malloc_buf = kmalloc(count * sizeof(char), GFP_KERNEL);
+
+    char *malloc_buf = NULL;
+    if(NULL != aesd_device.last_malloc_buf_) {
+        malloc_buf = aesd_device.last_malloc_buf_;
+        count = aesd_device.last_malloc_sz_;
+    }
+    else {
+        malloc_buf = kmalloc(count * sizeof(char), GFP_KERNEL);
+    }
     if(NULL == malloc_buf) {
         PDEBUG("can not malloc\n");
         mutex_unlock(&aesd_lock);
@@ -149,6 +170,9 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     {
         aesd_device.count_++;
     }
+    
+    aesd_device.last_malloc_buf_ = NULL;
+    aesd_device.last_malloc_sz_ = 0;
 
     /* Print out buffer */
 // #ifdef AESD_DEBUG

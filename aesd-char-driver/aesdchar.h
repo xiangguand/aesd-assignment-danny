@@ -34,6 +34,8 @@ struct aesd_dev
     bool is_open_;
     int count_;
     int index_;
+    char *last_malloc_buf_;
+    size_t last_malloc_sz_;
     struct cdev cdev;     /* Char device structure      */
 };
 
