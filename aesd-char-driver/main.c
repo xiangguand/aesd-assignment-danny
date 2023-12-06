@@ -156,17 +156,17 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     }
     else {
         malloc_buf = kmalloc(count * sizeof(char), GFP_KERNEL);
+        memcpy(malloc_buf, buf, count*sizeof(char));
     }
     if(NULL == malloc_buf) {
         PDEBUG("can not malloc\n");
         mutex_unlock(&aesd_lock);
         return -ENOMEM;
     }
-    memcpy(malloc_buf, buf, count*sizeof(char));
     entry.size = count;
     entry.buffptr = malloc_buf;
     aesd_circular_buffer_add_entry(&aesd_device.cir_buf_, &entry);
-    // printk(KERN_INFO "%s", malloc_buf);
+    printk(KERN_INFO "%s", malloc_buf);
     mutex_unlock(&aesd_lock);
     if(aesd_device.count_ < AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED)
     {
