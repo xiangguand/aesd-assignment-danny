@@ -77,6 +77,9 @@ void aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, const s
 
     if(true == buffer->full) {
         buffer->out_offs = buffer->in_offs;
+        if(AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED == buffer->in_offs) {
+            buffer->in_offs = 0;
+        }
     }
 }
 
