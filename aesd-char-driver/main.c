@@ -117,33 +117,33 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     /**
      * TODO: handle write
      */
+    mutex_lock(&aesd_lock);
     if(0 == count) {
+        mutex_unlock(&aesd_lock);
         return 0;
     }
 
-    mutex_lock(&aesd_lock);
 
     if(aesd_device.cir_buf_.full) {
         // alread full, free the memory that will overlap
         PDEBUG("buf: %p\n", aesd_device.cir_buf_.entry[aesd_device.cir_buf_.in_offs].buffptr);
-        // kfree(aesd_device.cir_buf_.entry[aesd_device.cir_buf_.in_offs].buffptr);
+        kfree(aesd_device.cir_buf_.entry[aesd_device.cir_buf_.in_offs].buffptr);
         // kfree(aesd_device.cir_buf_.entry[aesd_device.cir_buf_.in_offs].buffptr);
         aesd_device.cir_buf_.entry[aesd_device.cir_buf_.in_offs].size = 0;
     }
 
     struct aesd_buffer_entry entry;
-    // char *malloc_buf = kmalloc(count * sizeof(char) + 1, GFP_ATOMIC);
-    // if(NULL == malloc_buf) {
-        // PDEBUG("can not malloc\n");
-        // mutex_unlock(&aesd_lock);
-        // return -ENOMEM;
-    // }
-    // memcpy(malloc_buf, buf, count*sizeof(char)+1);
+    char *malloc_buf = kmalloc(count * sizeof(char) + 1, GFP_KERNEL);
+    if(NULL == malloc_buf) {
+        PDEBUG("can not malloc\n");
+        mutex_unlock(&aesd_lock);
+        return -ENOMEM;
+    }
+    memcpy(malloc_buf, buf, count*sizeof(char)+1);
     entry.size = count;
-    // entry.buffptr = malloc_buf;
-    entry.buffptr = buf;
+    entry.buffptr = malloc_buf;
     aesd_circular_buffer_add_entry(&aesd_device.cir_buf_, &entry);
-    // printk(KERN_INFO "%s", malloc_buf);
+    printk(KERN_INFO "%s", malloc_buf);
     mutex_unlock(&aesd_lock);
     if(aesd_device.count_ < AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED)
     {
