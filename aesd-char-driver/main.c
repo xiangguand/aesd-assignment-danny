@@ -125,7 +125,11 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 
     if(aesd_device.cir_buf_.full) {
         // alread full, free the memory that will overlap
-        kfree(aesd_device.cir_buf_.entry[aesd_device.cir_buf_.in_offs].buffptr);
+        PDEBUG("buf: %p\n", aesd_device.cir_buf_.entry[aesd_device.cir_buf_.in_offs].buffptr);
+        // kfree(aesd_device.cir_buf_.entry[aesd_device.cir_buf_.in_offs].buffptr);
+        if(aesd_device.cir_buf_.entry[aesd_device.cir_buf_.in_offs].buffptr != NULL) {
+            kfree(aesd_device.cir_buf_.entry[aesd_device.cir_buf_.in_offs].buffptr);
+        }
         aesd_device.cir_buf_.entry[aesd_device.cir_buf_.in_offs].size = 0;
     }
 
@@ -136,8 +140,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
         mutex_unlock(&aesd_lock);
         return -ENOMEM;
     }
-    memcpy(malloc_buf, buf, count*sizeof(char));
-    malloc_buf[count] = '\0';
+    memcpy(malloc_buf, buf, count*sizeof(char)+1);
     entry.size = count;
     entry.buffptr = malloc_buf;
     aesd_circular_buffer_add_entry(&aesd_device.cir_buf_, &entry);
