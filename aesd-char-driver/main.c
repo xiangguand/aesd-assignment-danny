@@ -150,23 +150,29 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     struct aesd_buffer_entry entry;
 
     char *malloc_buf = NULL;
+    size_t buf_sz = 0;
     if(NULL != aesd_device.last_malloc_buf_) {
         malloc_buf = aesd_device.last_malloc_buf_;
-        count = aesd_device.last_malloc_sz_;
+        aesd_device.last_malloc_buf_ = krealloc(aesd_device.last_malloc_buf_, aesd_device.last_malloc_sz_ + count + 1, GFP_KERNEL);
+        memcpy(&aesd_device.last_malloc_buf_[aesd_device.last_malloc_sz_], buf, count*sizeof(char));
+        aesd_device.last_malloc_sz_ += count * sizeof(char);
+        buf_sz = aesd_device.last_malloc_sz_;
     }
     else {
-        malloc_buf = kmalloc(count * sizeof(char), GFP_KERNEL);
+        malloc_buf = kmalloc(count * sizeof(char) + 1, GFP_KERNEL);
         memcpy(malloc_buf, buf, count*sizeof(char));
+        buf_sz = count;
     }
     if(NULL == malloc_buf) {
         PDEBUG("can not malloc\n");
         mutex_unlock(&aesd_lock);
         return -ENOMEM;
     }
-    entry.size = count;
+    malloc_buf[buf_sz] = '\0';
+    entry.size = buf_sz;
     entry.buffptr = malloc_buf;
     aesd_circular_buffer_add_entry(&aesd_device.cir_buf_, &entry);
-    printk(KERN_INFO "%s", malloc_buf);
+    // printk(KERN_INFO "%s", malloc_buf);
     mutex_unlock(&aesd_lock);
     if(aesd_device.count_ < AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED)
     {
@@ -177,13 +183,13 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     aesd_device.last_malloc_sz_ = 0;
 
     /* Print out buffer */
-// #ifdef AESD_DEBUG
-//     for(i=0;i<AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;i++)
-//     {
-//         PDEBUG("[%d]: %s, %p, %d, %d, %d, %d", i, aesd_device.cir_buf_.entry[i].buffptr, aesd_device.cir_buf_.entry[i].buffptr, aesd_device.cir_buf_.entry[i].size, 
-//                         aesd_device.cir_buf_.in_offs, aesd_device.cir_buf_.out_offs, aesd_device.cir_buf_.full);
-//     }
-// #endif /* AESD_DEBUG */
+#ifdef AESD_DEBUG
+    for(i=0;i<AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;i++)
+    {
+        PDEBUG("[%d]: %s, %p, %d, %d, %d, %d", i, aesd_device.cir_buf_.entry[i].buffptr, aesd_device.cir_buf_.entry[i].buffptr, aesd_device.cir_buf_.entry[i].size, 
+                        aesd_device.cir_buf_.in_offs, aesd_device.cir_buf_.out_offs, aesd_device.cir_buf_.full);
+    }
+#endif /* AESD_DEBUG */
     
     return count;
 }
