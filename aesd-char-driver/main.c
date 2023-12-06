@@ -93,7 +93,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
         }
         PDEBUG("rtentry: %p, %u", rtnentry, char_offset);
         if(rtnentry) {
-            PDEBUG("rtentry: %s, %d, %d", rtnentry->buffptr, rtnentry->size, offset_rtn);
+            // PDEBUG("rtentry: %s, %d, %d", rtnentry->buffptr, rtnentry->size, offset_rtn);
             memcpy(buf, rtnentry->buffptr, rtnentry->size);
             char_offset += rtnentry->size;
         }
@@ -133,17 +133,17 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     }
 
     struct aesd_buffer_entry entry;
-    char *malloc_buf = kmalloc(count * sizeof(char) + 1, GFP_KERNEL);
+    char *malloc_buf = kmalloc(count * sizeof(char), GFP_KERNEL);
     if(NULL == malloc_buf) {
         PDEBUG("can not malloc\n");
         mutex_unlock(&aesd_lock);
         return -ENOMEM;
     }
-    memcpy(malloc_buf, buf, count*sizeof(char)+1);
+    memcpy(malloc_buf, buf, count*sizeof(char));
     entry.size = count;
     entry.buffptr = malloc_buf;
     aesd_circular_buffer_add_entry(&aesd_device.cir_buf_, &entry);
-    printk(KERN_INFO "%s", malloc_buf);
+    // printk(KERN_INFO "%s", malloc_buf);
     mutex_unlock(&aesd_lock);
     if(aesd_device.count_ < AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED)
     {
@@ -151,13 +151,13 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     }
 
     /* Print out buffer */
-#ifdef AESD_DEBUG
-    for(i=0;i<AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;i++)
-    {
-        PDEBUG("[%d]: %s, %p, %d, %d, %d, %d", i, aesd_device.cir_buf_.entry[i].buffptr, aesd_device.cir_buf_.entry[i].buffptr, aesd_device.cir_buf_.entry[i].size, 
-                        aesd_device.cir_buf_.in_offs, aesd_device.cir_buf_.out_offs, aesd_device.cir_buf_.full);
-    }
-#endif /* AESD_DEBUG */
+// #ifdef AESD_DEBUG
+//     for(i=0;i<AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;i++)
+//     {
+//         PDEBUG("[%d]: %s, %p, %d, %d, %d, %d", i, aesd_device.cir_buf_.entry[i].buffptr, aesd_device.cir_buf_.entry[i].buffptr, aesd_device.cir_buf_.entry[i].size, 
+//                         aesd_device.cir_buf_.in_offs, aesd_device.cir_buf_.out_offs, aesd_device.cir_buf_.full);
+//     }
+// #endif /* AESD_DEBUG */
     
     return count;
 }
