@@ -116,11 +116,13 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 
     if('\n' != buf[count-1]) {
         if(aesd_device.last_malloc_buf_) {
+            aesd_device.last_malloc_buf_ = krealloc(aesd_device.last_malloc_buf_, aesd_device.last_malloc_sz_ + count, GFP_KERNEL);
+            memcpy(&aesd_device.last_malloc_buf_[aesd_device.last_malloc_sz_], buf, count*sizeof(char));
             aesd_device.last_malloc_sz_ += count * sizeof(char);
-            aesd_device.last_malloc_buf_ = krealloc(aesd_device.last_malloc_buf_, aesd_device.last_malloc_sz_, GFP_KERNEL);
         }
         else {
             aesd_device.last_malloc_buf_ = kmalloc(count * sizeof(char), GFP_KERNEL);
+            memcpy(&aesd_device.last_malloc_buf_[aesd_device.last_malloc_sz_], buf, count*sizeof(char));
             aesd_device.last_malloc_sz_ = count * sizeof(char);
         }
         return count;
@@ -139,7 +141,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 
     if(aesd_device.cir_buf_.full) {
         // alread full, free the memory that will overlap
-        PDEBUG("buf: %p\n", aesd_device.cir_buf_.entry[aesd_device.cir_buf_.in_offs].buffptr);
+        PDEBUG("buf: %s\n", aesd_device.cir_buf_.entry[aesd_device.cir_buf_.in_offs].buffptr);
         kfree(aesd_device.cir_buf_.entry[aesd_device.cir_buf_.in_offs].buffptr);
         // kfree(aesd_device.cir_buf_.entry[aesd_device.cir_buf_.in_offs].buffptr);
         aesd_device.cir_buf_.entry[aesd_device.cir_buf_.in_offs].size = 0;
