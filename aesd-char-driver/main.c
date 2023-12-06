@@ -53,9 +53,6 @@ int aesd_open(struct inode *inode, struct file *filp)
 int aesd_release(struct inode *inode, struct file *filp)
 {
     PDEBUG("release");
-    /**
-     * TODO: handle release
-     */
     aesd_device.is_open_ = false;
     return 0;
 }
@@ -72,9 +69,6 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
     }
     ssize_t retval = 0;
     PDEBUG("read %zu bytes with offset %lld",count,*f_pos);
-    /**
-     * TODO: handle read
-     */
 
     size_t offset_rtn = 0;
     aesd_device.cir_buf_.out_offs;
@@ -82,24 +76,21 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
 
     struct aesd_buffer_entry *rtnentry;
 
-    // while(count > char_offset) {
-        mutex_lock(&aesd_lock);
-        rtnentry = aesd_circular_buffer_find_entry_offset_for_fpos(&aesd_device.cir_buf_,
-                                                    char_offset,
-                                                    &offset_rtn);
-        if(NULL == rtnentry) {
-            mutex_unlock(&aesd_lock);
-            return 0;
-        }
-        PDEBUG("rtentry: %p, %u", rtnentry, char_offset);
-        if(rtnentry) {
-            PDEBUG("rtentry: %p, %d, %d", rtnentry->buffptr, rtnentry->size, offset_rtn);
-            memcpy(buf, rtnentry->buffptr, rtnentry->size);
-            char_offset += rtnentry->size;
-        }
+    mutex_lock(&aesd_lock);
+    rtnentry = aesd_circular_buffer_find_entry_offset_for_fpos(&aesd_device.cir_buf_,
+                                                char_offset,
+                                                &offset_rtn);
+    if(NULL == rtnentry) {
         mutex_unlock(&aesd_lock);
-        // break;
-    // }
+        return 0;
+    }
+    PDEBUG("rtentry: %p, %u", rtnentry, char_offset);
+    if(rtnentry) {
+        PDEBUG("rtentry: %p, %d, %d", rtnentry->buffptr, rtnentry->size, offset_rtn);
+        memcpy(buf, rtnentry->buffptr, rtnentry->size);
+        char_offset += rtnentry->size;
+    }
+    mutex_unlock(&aesd_lock);
     *f_pos = char_offset;
 
     return rtnentry->size;
@@ -128,10 +119,6 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
         return count;
     }
 
-
-    /**
-     * TODO: handle write
-     */
     mutex_lock(&aesd_lock);
     if(0 == count) {
         mutex_unlock(&aesd_lock);
@@ -143,7 +130,6 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
         // alread full, free the memory that will overlap
         PDEBUG("buf: %s\n", aesd_device.cir_buf_.entry[aesd_device.cir_buf_.in_offs].buffptr);
         kfree(aesd_device.cir_buf_.entry[aesd_device.cir_buf_.in_offs].buffptr);
-        // kfree(aesd_device.cir_buf_.entry[aesd_device.cir_buf_.in_offs].buffptr);
         aesd_device.cir_buf_.entry[aesd_device.cir_buf_.in_offs].size = 0;
     }
 
