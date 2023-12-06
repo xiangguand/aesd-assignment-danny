@@ -131,6 +131,11 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 
     struct aesd_buffer_entry entry;
     char *malloc_buf = kmalloc(count * sizeof(char) + 1, GFP_ATOMIC);
+    if(NULL == malloc_buf) {
+        PDEBUG("can not malloc\n");
+        mutex_unlock(&aesd_lock);
+        return -ENOMEM;
+    }
     memcpy(malloc_buf, buf, count*sizeof(char));
     malloc_buf[count] = '\0';
     entry.size = count;
