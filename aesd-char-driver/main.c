@@ -127,9 +127,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
         // alread full, free the memory that will overlap
         PDEBUG("buf: %p\n", aesd_device.cir_buf_.entry[aesd_device.cir_buf_.in_offs].buffptr);
         // kfree(aesd_device.cir_buf_.entry[aesd_device.cir_buf_.in_offs].buffptr);
-        if(aesd_device.cir_buf_.entry[aesd_device.cir_buf_.in_offs].buffptr != NULL) {
-            kfree(aesd_device.cir_buf_.entry[aesd_device.cir_buf_.in_offs].buffptr);
-        }
+        // kfree(aesd_device.cir_buf_.entry[aesd_device.cir_buf_.in_offs].buffptr);
         aesd_device.cir_buf_.entry[aesd_device.cir_buf_.in_offs].size = 0;
     }
 
