@@ -32,6 +32,8 @@ struct aesd_dev
      */
     struct aesd_circular_buffer cir_buf_;
     bool is_open_;
+    int count_;
+    int index_;
     struct cdev cdev;     /* Char device structure      */
 };
 

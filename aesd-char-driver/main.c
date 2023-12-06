@@ -97,6 +97,10 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
         // break;
     // }
     *f_pos = char_offset;
+    if(++aesd_device.index_ == aesd_device.count_) {
+        aesd_device.index_ = 0;
+        return 0;
+    }
 
     return rtnentry->size;
 }
@@ -134,6 +138,10 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     aesd_circular_buffer_add_entry(&aesd_device.cir_buf_, &entry);
     printk(KERN_INFO "%s", malloc_buf);
     mutex_unlock(&aesd_lock);
+    if(aesd_device.count_ < AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED)
+    {
+        aesd_device.count_++;
+    }
 
     /* Print out buffer */
 #ifdef AESD_DEBUG
