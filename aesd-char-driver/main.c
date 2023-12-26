@@ -20,6 +20,7 @@
 #include <linux/fs.h> // file_operations
 #include<linux/slab.h>
 #include <linux/mutex.h>
+#include "aesd_ioctl.h"
 #include "aesdchar.h"
 
 /* Circular buffer */
@@ -54,6 +55,25 @@ int aesd_release(struct inode *inode, struct file *filp)
 {
     PDEBUG("release");
     aesd_device.is_open_ = false;
+    return 0;
+}
+
+loff_t aesd_llseek(struct file *filp, loff_t offset, int whence) {
+    PDEBUG("f_pos: %lu, offset: %ld, whence: %d", filp->f_pos, offset, whence);
+
+    switch (whence) {
+    case SEEK_SET:
+        filp->f_pos = offset;
+        break;
+    case SEEK_CUR:
+        filp->f_pos += offset;
+        break;
+    case SEEK_END:
+        break;
+    default:
+        return -EINVAL;
+    }
+
     return 0;
 }
 
@@ -181,6 +201,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 }
 struct file_operations aesd_fops = {
     .owner =    THIS_MODULE,
+    .llseek =   aesd_llseek,
     .read =     aesd_read,
     .write =    aesd_write,
     .open =     aesd_open,
