@@ -115,7 +115,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
     mutex_unlock(&aesd_lock);
     *f_pos = char_offset;
 
-    return rtnentry->size;
+    return rtnentry->size-offset_rtn;
 }
 
 ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
