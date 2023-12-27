@@ -104,18 +104,19 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
         mutex_unlock(&aesd_lock);
         return 0;
     }
+    ssize_t ret_sz = 0;
     PDEBUG("rtentry: %p, %u", rtnentry, char_offset);
     if(rtnentry) {
         PDEBUG("rtentry: %s, %d, %d", rtnentry->buffptr, rtnentry->size, offset_rtn);
-        // copy_from_kernel_nofault(&buf[*f_pos], rtnentry->buffptr, rtnentry->size-(*f_pos));
 
-        memcpy(buf, &rtnentry->buffptr[offset_rtn], rtnentry->size-offset_rtn);
-        char_offset += rtnentry->size-offset_rtn;
+        ret_sz = rtnentry->size-offset_rtn;
+        copy_to_user(buf, &rtnentry->buffptr[offset_rtn], ret_sz);
+        char_offset += ret_sz;
     }
     mutex_unlock(&aesd_lock);
     *f_pos = char_offset;
 
-    return rtnentry->size-offset_rtn;
+    return ret_sz;
 }
 
 ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
