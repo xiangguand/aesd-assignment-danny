@@ -74,7 +74,7 @@ loff_t aesd_llseek(struct file *filp, loff_t offset, int whence) {
         return -EINVAL;
     }
 
-    return 0;
+    return filp->f_pos;
 }
 
 ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
@@ -108,10 +108,8 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
     if(rtnentry) {
         PDEBUG("rtentry: %p, %d, %d", rtnentry->buffptr, rtnentry->size, offset_rtn);
         // copy_from_kernel_nofault(&buf[*f_pos], rtnentry->buffptr, rtnentry->size-(*f_pos));
-        if(rtnentry->size >= *f_pos) {
-            rtnentry->size -= *f_pos;
-        }
-        memcpy(&buf[*f_pos], rtnentry->buffptr, rtnentry->size);
+
+        memcpy(buf, rtnentry->buffptr, rtnentry->size);
         char_offset += rtnentry->size;
     }
     mutex_unlock(&aesd_lock);
