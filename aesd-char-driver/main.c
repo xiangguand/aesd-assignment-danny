@@ -109,8 +109,8 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
         PDEBUG("rtentry: %s, %d, %d", rtnentry->buffptr, rtnentry->size, offset_rtn);
         // copy_from_kernel_nofault(&buf[*f_pos], rtnentry->buffptr, rtnentry->size-(*f_pos));
 
-        memcpy(buf, rtnentry->buffptr, rtnentry->size);
-        char_offset += rtnentry->size;
+        memcpy(buf, &rtnentry->buffptr[offset_rtn], rtnentry->size-offset_rtn);
+        char_offset += rtnentry->size-offset_rtn;
     }
     mutex_unlock(&aesd_lock);
     *f_pos = char_offset;
