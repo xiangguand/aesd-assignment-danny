@@ -77,6 +77,15 @@ loff_t aesd_llseek(struct file *filp, loff_t offset, int whence) {
     return filp->f_pos;
 }
 
+long aesd_ioctl (struct file *filp, unsigned int cmd, unsigned long arg)
+{
+    PDEBUG("cmd: %lu, arg: %ld", cmd, arg);
+
+    /* Return -EINVAL if parameters out of range */
+
+    return 0;
+}
+
 ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
                 loff_t *f_pos)
 {
@@ -205,6 +214,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 struct file_operations aesd_fops = {
     .owner =    THIS_MODULE,
     .llseek =   aesd_llseek,
+    .unlocked_ioctl = aesd_ioctl,
     .read =     aesd_read,
     .write =    aesd_write,
     .open =     aesd_open,

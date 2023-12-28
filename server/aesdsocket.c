@@ -26,8 +26,13 @@
 /* Syslog, refer from https://linux.die.net/man/3/syslog */
 #include <syslog.h>
 
-/* Force close the printf */
-#define printf(...) ;
+/* Force close the DEBUG_PRINTF */
+#define DEBUG 1
+#if DEBUG
+#define DEBUG_PRINTF(...) printf(__VA_ARGS__)
+#else
+#define DEBUG_PRINTF(...) ;
+#endif /* DEBUG */
 
 /* Assignment information */
 #define WRITE_DIR   "/var/tmp"
@@ -43,7 +48,7 @@ static inline void writeToAesdFile(const char *data, int bytes) {
   if(NULL != f) {
     int write_bytes = fwrite(data, 1, bytes, f);
     if(write_bytes != bytes) {
-      printf("Write bytes and bytes providing are not matched %d, %d\n", write_bytes, bytes);
+      DEBUG_PRINTF("Write bytes and bytes providing are not matched %d, %d\n", write_bytes, bytes);
     }
     fclose(f);
   }
@@ -66,6 +71,21 @@ static void Signal_Handler(int sig_num) {
   }
 }
 
+/* AESDCHAR Driver */
+#define AESDCHAR_DEVICE "/dev/aesdchar"
+
+/* Handle AESDCHAR IOCSEEKTO, get X and Y, find: return 0 */
+int handle_aesdchar_ioseekto(const char *buf, int *x, int *y)
+{
+  int ret = sscanf(buf, "AESDCHAR_IOCSEEKTO:%u,%u", x, y);
+  if(2 == ret) {
+    // find !!!
+    DEBUG_PRINTF("Find IOCSEEKTO: %d, %d\n", *x, *y);
+    return 1;
+  }
+  return 0;
+}
+
 static void *SocketClientThread(void * fd_);
 
 static void *startSockerServerThread(void *fd_) {
@@ -74,7 +94,7 @@ static void *startSockerServerThread(void *fd_) {
   int ret = 0;
   struct timespec tp, prev_tp;
   char buf[200];
-  printf("Socket id: %d\n", sockfd);
+  DEBUG_PRINTF("Socket id: %d\n", sockfd);
   bool fg_start_write_timestamp = false;
   threadPara_t *head = NULL;
   threadPara_t *node = NULL;
@@ -92,7 +112,7 @@ static void *startSockerServerThread(void *fd_) {
         }
         fg_start_write_timestamp = true;
       }
-      printf("Accept successfully from %s:%d\n", inet_ntoa(client_address.sin_addr), ntohs(client_address.sin_port));
+      DEBUG_PRINTF("Accept successfully from %s:%d\n", inet_ntoa(client_address.sin_addr), ntohs(client_address.sin_port));
     
       node = createThreadPara(&head);
       int *clientid_new = malloc(sizeof(int));
@@ -100,7 +120,7 @@ static void *startSockerServerThread(void *fd_) {
       ret = pthread_create(&node->thread_, NULL, SocketClientThread, (void *)clientid_new);
       assert(0 == ret);
       if(ret != 0) {
-        printf("Fail to create pthreat");
+        DEBUG_PRINTF("Fail to create pthreat");
         break;
       }
       void *ptr = NULL;
@@ -113,10 +133,10 @@ static void *startSockerServerThread(void *fd_) {
     ret = clock_gettime(CLOCK_MONOTONIC, &tp);
     assert(0 == ret);
     if(fg_start_write_timestamp && tp.tv_sec - prev_tp.tv_sec >= 10) {
-      printf("===== Write time =====\n");
+      DEBUG_PRINTF("===== Write time =====\n");
       ret = pthread_mutex_lock(&file_mutex);
       assert(0 == ret);
-      printf("===== LOCK =====\n");
+      DEBUG_PRINTF("===== LOCK =====\n");
       time_t currentTime;
       struct tm* timeInfo;
       time(&currentTime);
@@ -127,12 +147,12 @@ static void *startSockerServerThread(void *fd_) {
       writeToAesdFile(buf, ret);
       ret = pthread_mutex_unlock(&file_mutex);
       assert(0 == ret);
-      printf("===== UNLOCK =====\n");
+      DEBUG_PRINTF("===== UNLOCK =====\n");
       prev_tp.tv_sec = tp.tv_sec;
     }
   }
   disposeThreadPara(head);
-  printf("End server handler\n");
+  DEBUG_PRINTF("End server handler\n");
 
   return NULL;
 }
@@ -142,21 +162,40 @@ static void *SocketClientThread(void * fd_) {
   int fd = *((int *)fd_);
   free(fd_);
 
-  // Request 2048 bytes buffer
+  /* Open AESDCHAR Device */
+  int aesdchar_fd = open(AESDCHAR_DEVICE, O_RDWR);
+  if(-1 == aesdchar_fd) {
+    DEBUG_PRINTF("Fail to open AESDCHAR Device\n");
+  }
+  else {
+    aesdchar_fd = -1;
+  }
+
+  // Request 204800 bytes buffer
   int ret = 0;
+  int x, y;
   assert(0 == ret);
   char buf[204800] = {0};
   int bytes = 0;
   while(!fg_sigint && !fg_sigterm) {
     bytes = recv(fd, buf, 204800, 0);
     if(bytes > 0) {
-      // printf("Recv: %d\n", bytes);
-      // printf("%s\n", buf);
+      // DEBUG_PRINTF("Recv: %d\n", bytes);
+      // DEBUG_PRINTF("%s\n", buf);
 
       /* Lock mutex */
       ret = pthread_mutex_lock(&file_mutex);
       assert(0 == ret);
-      printf("===== LOCK =====\n");
+      DEBUG_PRINTF("===== LOCK =====\n");
+
+      /* if find AESD_IOCSEEKTO */
+      if(aesdchar_fd != -1) {
+        // aesdchar driver is available
+        if(handle_aesdchar_ioseekto(buf, &x, &y)) {
+          lseek(aesdchar_fd, x, SEEK_SET);
+          lseek(aesdchar_fd, y, SEEK_CUR);
+        }
+      }
 
       writeToAesdFile(buf, bytes);
 
@@ -168,18 +207,21 @@ static void *SocketClientThread(void * fd_) {
           fseek(f, 0, SEEK_SET);
           fread(buf, 1, file_size, f);
           send(fd, buf, file_size, 0);
-          printf("Transmit: \n%s\n", buf);
+          DEBUG_PRINTF("Transmit: \n%s\n", buf);
         }
         fclose(f);
       }
       ret = pthread_mutex_unlock(&file_mutex);
       assert(0 == ret);
-      printf("===== UNLOCK =====\n");
+      DEBUG_PRINTF("===== UNLOCK =====\n");
       /* Unlock mutex */
       break;
     }
   }
-  printf("End client handler\n");
+  if(aesdchar_fd != -1) {
+    (void)close(aesdchar_fd);
+  }
+  DEBUG_PRINTF("End client handler\n");
 
   return NULL;
 }
@@ -224,12 +266,12 @@ int main(int argc, char *argv[]) {
     syslog(LOG_DEBUG, "Create directory %s\n", WRITE_DIR);
     ret = mkdir(WRITE_DIR, 0775);
     assert(0 == ret);
-    printf("Create directory %s\n", WRITE_DIR);
+    DEBUG_PRINTF("Create directory %s\n", WRITE_DIR);
   }
   else {
     // directory already exists
     syslog(LOG_DEBUG, "Directory already exists\n");
-    printf("Directory already exists\n");
+    DEBUG_PRINTF("Directory already exists\n");
     closedir(dir);
   }
 
@@ -242,35 +284,35 @@ int main(int argc, char *argv[]) {
 
   };
   struct addrinfo *res = NULL;
-  printf("Get info\n");
+  DEBUG_PRINTF("Get info\n");
   ret = getaddrinfo(SOCKER_SERVER_HOST, SOCKER_SERVER_PORT, &hints, &res);
   if(-1 == ret) {
-    printf("Get address info fail\n");
+    DEBUG_PRINTF("Get address info fail\n");
     goto cleanup;
   }
   char buf[20];
   (void)inet_ntop(res->ai_family, &((struct sockaddr_in *)res->ai_addr)->sin_addr, buf, sizeof(buf));
-  printf("Server IP %s with port %s\n", buf, SOCKER_SERVER_PORT);
+  DEBUG_PRINTF("Server IP %s with port %s\n", buf, SOCKER_SERVER_PORT);
   
   assert(res != NULL);
-  // printf("%s\n", r->ai_addr);
+  // DEBUG_PRINTF("%s\n", r->ai_addr);
   
   /* Create a socket server with port 9000 */
   int sockfd;
 
   sockfd = socket(res->ai_family,res->ai_socktype,res->ai_protocol);
   if(-1 == sockfd) {
-    printf("Fail to create an endpoint\n");
+    DEBUG_PRINTF("Fail to create an endpoint\n");
     return -1;
   }
-  printf("Create an endpoint for communication successfully. %d\n", sockfd);
+  DEBUG_PRINTF("Create an endpoint for communication successfully. %d\n", sockfd);
 
   /* Setting socket file descriptor to non-blocking mode */
   int socket_file_flags = fcntl(sockfd, F_GETFL, 0);
   socket_file_flags |= O_NONBLOCK;
   ret = fcntl(sockfd, F_SETFL, socket_file_flags);
   if(-1 == ret) {
-    printf("Fail to change to non-blocking\n");
+    DEBUG_PRINTF("Fail to change to non-blocking\n");
     goto cleanup;
   }
   int dummy =1;
@@ -280,17 +322,17 @@ int main(int argc, char *argv[]) {
 
   ret = bind(sockfd, res->ai_addr, sizeof(struct sockaddr));
   if(-1 == ret) {
-    printf("Fail to bind\n");
+    DEBUG_PRINTF("Fail to bind\n");
     goto cleanup;
   }
-  printf("Bind successfully\n");
+  DEBUG_PRINTF("Bind successfully\n");
 
   ret = listen(sockfd, 10);
   if(-1 == ret) {
-    printf("Fail to listen\n");
+    DEBUG_PRINTF("Fail to listen\n");
     goto cleanup;
   }
-  printf("Start listening\n");
+  DEBUG_PRINTF("Start listening\n");
 
   pthread_t thread = 0;
   /* Signal handling */
@@ -301,16 +343,16 @@ int main(int argc, char *argv[]) {
   new_actions.sa_handler = Signal_Handler;
   /* Register signal information and callback */
   if(sigaction(SIGINT, &new_actions, NULL) != 0) {
-    printf("Fail to register SIGINT\n");
+    DEBUG_PRINTF("Fail to register SIGINT\n");
     success = false;  
   }
   if(sigaction(SIGTERM, &new_actions, NULL) != 0) {
-    printf("Fail to register SIGTERM\n");
+    DEBUG_PRINTF("Fail to register SIGTERM\n");
     success = false;  
   }
 
   if(success) {
-    printf("Waiting forever for a signal to terminate program\n");
+    DEBUG_PRINTF("Waiting forever for a signal to terminate program\n");
 
     /* Server handler thread */
     ret = pthread_mutex_init(&file_mutex, NULL);
@@ -319,15 +361,15 @@ int main(int argc, char *argv[]) {
     *sockfd_new = sockfd;
     ret = pthread_create(&thread, NULL, startSockerServerThread, (void *)sockfd_new);
     if(ret != 0) {
-      printf("Fail to create pthreat");
+      DEBUG_PRINTF("Fail to create pthreat");
       goto cleanup;
     }  
 
     if(fg_sigint) {
-      printf("Caught SIGINT\n");
+      DEBUG_PRINTF("Caught SIGINT\n");
     }
     if(fg_sigterm) {
-      printf("Caught SIGTERM\n");
+      DEBUG_PRINTF("Caught SIGTERM\n");
     }
   }
 
@@ -337,13 +379,13 @@ int main(int argc, char *argv[]) {
 
 
 cleanup:
-  printf("Closing socket server ...\n");
+  DEBUG_PRINTF("Closing socket server ...\n");
   close(sockfd);
   if(res) {
     freeaddrinfo(res);
   }
   
-  printf("Deleting aesdsocketdata ...\n");
+  DEBUG_PRINTF("Deleting aesdsocketdata ...\n");
   system("rm" " -f " WRITE_FILENAME);
   closelog();
 
