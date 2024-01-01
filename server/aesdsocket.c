@@ -196,7 +196,7 @@ static void *SocketClientThread(void * fd_) {
         if(handle_aesdchar_ioseekto(buf, &x, &y)) {
           lseek(aesdchar_fd, x, SEEK_SET);
           lseek(aesdchar_fd, y, SEEK_CUR);
-      }
+        }
       }
 
       ssize_t wr_sz = write(aesdchar_fd, buf, bytes);
@@ -205,6 +205,9 @@ static void *SocketClientThread(void * fd_) {
       DEBUG_PRINTF("Read AESDCHAR %ld bytes and transmit back\n", rd_sz);
 
       send(fd, buf, rd_sz, 0);
+      
+      ret = pthread_mutex_unlock(&file_mutex);
+      assert(0 == ret);
 
 #if 0 // previous assignment
       writeToAesdFile(buf, bytes);
@@ -221,14 +224,15 @@ static void *SocketClientThread(void * fd_) {
         }
         fclose(f);
       }
-      ret = pthread_mutex_unlock(&file_mutex);
-      assert(0 == ret);
 #endif
 
       /* Close AESDCHAR Device */
       if(aesdchar_fd != -1) {
         (void)close(aesdchar_fd);
       }
+
+      ret = pthread_mutex_unlock(&file_mutex);
+      assert(0 == ret);
       DEBUG_PRINTF("===== UNLOCK =====\n");
       /* Unlock mutex */
       break;
