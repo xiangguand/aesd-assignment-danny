@@ -205,7 +205,7 @@ static void *SocketClientThread(void * fd_) {
       int i_b = 0;
       while(1) {
         rd_sz = read(aesdchar_fd, &buf[i_b], sizeof(buf)-i_b);
-        if(rd_sz == -1) {
+        if(rd_sz == -1 || rd_sz == 0) {
           break;
         }
         i_b += rd_sz;
