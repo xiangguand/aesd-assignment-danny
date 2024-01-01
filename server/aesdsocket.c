@@ -183,12 +183,12 @@ static void *SocketClientThread(void * fd_) {
       DEBUG_PRINTF("===== LOCK =====\n");
 
       /* Open AESDCHAR Device */
-      int aesdchar_fd = open(AESDCHAR_DEVICE, O_RDONLY);
+      int aesdchar_fd = open(AESDCHAR_DEVICE, O_RDWR);
       if(-1 == aesdchar_fd) {
         DEBUG_PRINTF("Fail to open AESDCHAR Device\n");
       }
       else {
-        DEBUG_PRINTF("Succeed to open AESDCHAR Device\n");
+        DEBUG_PRINTF("Succeed to open AESDCHAR Device %d\n", aesdchar_fd);
       }
       /* if find AESD_IOCSEEKTO */
       // if(aesdchar_fd != -1) {
