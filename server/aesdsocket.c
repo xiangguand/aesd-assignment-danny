@@ -201,10 +201,18 @@ static void *SocketClientThread(void * fd_) {
 
       ssize_t wr_sz = write(aesdchar_fd, buf, bytes);
       DEBUG_PRINTF("Write AESDCHAR %ld bytes\n", wr_sz);
-      ssize_t rd_sz = read(aesdchar_fd, buf, sizeof(buf));
-      DEBUG_PRINTF("Read AESDCHAR %ld bytes and transmit back\n", rd_sz);
+      ssize_t rd_sz;
+      int i_b = 0;
+      while(1) {
+        rd_sz = read(aesdchar_fd, &buf[i_b], sizeof(buf)-i_b);
+        if(rd_sz == -1) {
+          break;
+        }
+        i_b += rd_sz;
+        DEBUG_PRINTF("Read AESDCHAR %ld bytes and transmit back\n", rd_sz);
+      }
 
-      send(fd, buf, rd_sz, 0);
+      send(fd, buf, i_b, 0);
       
       ret = pthread_mutex_unlock(&file_mutex);
       assert(0 == ret);
