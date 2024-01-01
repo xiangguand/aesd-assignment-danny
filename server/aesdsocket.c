@@ -164,8 +164,6 @@ static void *SocketClientThread(void * fd_) {
   int fd = *((int *)fd_);
   free(fd_);
 
-
-
   // Request 204800 bytes buffer
   int ret = 0;
   int x, y;
@@ -196,10 +194,11 @@ static void *SocketClientThread(void * fd_) {
           lseek(aesdchar_fd, y, SEEK_CUR);
       }
       // }
-      // if(aesdchar_fd != -1) {
-        (void)close(aesdchar_fd);
-      // }
 
+      ssize_t rd_sz = read(aesdchar_fd, buf, bytes);
+      DEBUG_PRINTF("Read AESDCHAR %d bytes\n", rd_sz);
+
+#if 0 // previous assignment
       writeToAesdFile(buf, bytes);
 
       FILE *f = fopen(WRITE_FILENAME, "rb");
@@ -216,6 +215,12 @@ static void *SocketClientThread(void * fd_) {
       }
       ret = pthread_mutex_unlock(&file_mutex);
       assert(0 == ret);
+#endif
+
+      /* Close AESDCHAR Device */
+      // if(aesdchar_fd != -1) {
+        (void)close(aesdchar_fd);
+      // }
       DEBUG_PRINTF("===== UNLOCK =====\n");
       /* Unlock mutex */
       break;
