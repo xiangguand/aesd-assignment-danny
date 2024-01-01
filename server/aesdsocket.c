@@ -187,6 +187,9 @@ static void *SocketClientThread(void * fd_) {
       if(-1 == aesdchar_fd) {
         DEBUG_PRINTF("Fail to open AESDCHAR Device\n");
       }
+      else {
+        DEBUG_PRINTF("Succeed to open AESDCHAR Device\n");
+      }
       /* if find AESD_IOCSEEKTO */
       // if(aesdchar_fd != -1) {
         // aesdchar driver is available
@@ -197,9 +200,9 @@ static void *SocketClientThread(void * fd_) {
       // }
 
       ssize_t wr_sz = write(aesdchar_fd, buf, bytes);
-      DEBUG_PRINTF("Write AESDCHAR %lu bytes\n", wr_sz);
+      DEBUG_PRINTF("Write AESDCHAR %ld bytes\n", wr_sz);
       ssize_t rd_sz = read(aesdchar_fd, buf, bytes);
-      DEBUG_PRINTF("Read AESDCHAR %lu bytes and transmit back\n", rd_sz);
+      DEBUG_PRINTF("Read AESDCHAR %ld bytes and transmit back\n", rd_sz);
 
       send(fd, buf, rd_sz, 0);
 
