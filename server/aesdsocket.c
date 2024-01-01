@@ -164,14 +164,7 @@ static void *SocketClientThread(void * fd_) {
   int fd = *((int *)fd_);
   free(fd_);
 
-  /* Open AESDCHAR Device */
-  int aesdchar_fd = open(AESDCHAR_DEVICE, O_RDWR);
-  if(-1 == aesdchar_fd) {
-    DEBUG_PRINTF("Fail to open AESDCHAR Device\n");
-  }
-  else {
-    aesdchar_fd = -1;
-  }
+
 
   // Request 204800 bytes buffer
   int ret = 0;
@@ -190,13 +183,24 @@ static void *SocketClientThread(void * fd_) {
       assert(0 == ret);
       DEBUG_PRINTF("===== LOCK =====\n");
 
+      /* Open AESDCHAR Device */
+      int aesdchar_fd = open(AESDCHAR_DEVICE, O_RDONLY);
+      if(-1 == aesdchar_fd) {
+        DEBUG_PRINTF("Fail to open AESDCHAR Device\n");
+      }
+      else {
+        aesdchar_fd = -1;
+      }
       /* if find AESD_IOCSEEKTO */
       if(aesdchar_fd != -1) {
         // aesdchar driver is available
         if(handle_aesdchar_ioseekto(buf, &x, &y)) {
           lseek(aesdchar_fd, x, SEEK_SET);
           lseek(aesdchar_fd, y, SEEK_CUR);
-        }
+      }
+      }
+      if(aesdchar_fd != -1) {
+        (void)close(aesdchar_fd);
       }
 
       writeToAesdFile(buf, bytes);
@@ -219,9 +223,6 @@ static void *SocketClientThread(void * fd_) {
       /* Unlock mutex */
       break;
     }
-  }
-  if(aesdchar_fd != -1) {
-    (void)close(aesdchar_fd);
   }
   DEBUG_PRINTF("End client handler\n");
 
