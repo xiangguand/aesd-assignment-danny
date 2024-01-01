@@ -191,17 +191,17 @@ static void *SocketClientThread(void * fd_) {
         DEBUG_PRINTF("Succeed to open AESDCHAR Device %d\n", aesdchar_fd);
       }
       /* if find AESD_IOCSEEKTO */
-      // if(aesdchar_fd != -1) {
+      if(aesdchar_fd != -1) {
         // aesdchar driver is available
         if(handle_aesdchar_ioseekto(buf, &x, &y)) {
           lseek(aesdchar_fd, x, SEEK_SET);
           lseek(aesdchar_fd, y, SEEK_CUR);
       }
-      // }
+      }
 
       ssize_t wr_sz = write(aesdchar_fd, buf, bytes);
       DEBUG_PRINTF("Write AESDCHAR %ld bytes\n", wr_sz);
-      ssize_t rd_sz = read(aesdchar_fd, buf, bytes);
+      ssize_t rd_sz = read(aesdchar_fd, buf, sizeof(buf));
       DEBUG_PRINTF("Read AESDCHAR %ld bytes and transmit back\n", rd_sz);
 
       send(fd, buf, rd_sz, 0);
@@ -226,9 +226,9 @@ static void *SocketClientThread(void * fd_) {
 #endif
 
       /* Close AESDCHAR Device */
-      // if(aesdchar_fd != -1) {
+      if(aesdchar_fd != -1) {
         (void)close(aesdchar_fd);
-      // }
+      }
       DEBUG_PRINTF("===== UNLOCK =====\n");
       /* Unlock mutex */
       break;
