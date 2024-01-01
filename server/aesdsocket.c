@@ -94,6 +94,7 @@ static void *startSockerServerThread(void *fd_) {
   int ret = 0;
   struct timespec tp, prev_tp;
   char buf[200];
+  (void)buf;
   DEBUG_PRINTF("Socket id: %d\n", sockfd);
   bool fg_start_write_timestamp = false;
   threadPara_t *head = NULL;
@@ -173,8 +174,8 @@ static void *SocketClientThread(void * fd_) {
   while(!fg_sigint && !fg_sigterm) {
     bytes = recv(fd, buf, 204800, 0);
     if(bytes > 0) {
-      // DEBUG_PRINTF("Recv: %d\n", bytes);
-      // DEBUG_PRINTF("%s\n", buf);
+      DEBUG_PRINTF("Recv: %d\n", bytes);
+      DEBUG_PRINTF("%s\n", buf);
 
       /* Lock mutex */
       ret = pthread_mutex_lock(&file_mutex);
@@ -195,8 +196,12 @@ static void *SocketClientThread(void * fd_) {
       }
       // }
 
+      ssize_t wr_sz = write(aesdchar_fd, buf, bytes);
+      DEBUG_PRINTF("Write AESDCHAR %lu bytes\n", wr_sz);
       ssize_t rd_sz = read(aesdchar_fd, buf, bytes);
-      DEBUG_PRINTF("Read AESDCHAR %d bytes\n", rd_sz);
+      DEBUG_PRINTF("Read AESDCHAR %lu bytes and transmit back\n", rd_sz);
+
+      send(fd, buf, rd_sz, 0);
 
 #if 0 // previous assignment
       writeToAesdFile(buf, bytes);
