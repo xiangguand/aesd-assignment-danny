@@ -188,20 +188,17 @@ static void *SocketClientThread(void * fd_) {
       if(-1 == aesdchar_fd) {
         DEBUG_PRINTF("Fail to open AESDCHAR Device\n");
       }
-      else {
-        aesdchar_fd = -1;
-      }
       /* if find AESD_IOCSEEKTO */
-      if(aesdchar_fd != -1) {
+      // if(aesdchar_fd != -1) {
         // aesdchar driver is available
         if(handle_aesdchar_ioseekto(buf, &x, &y)) {
           lseek(aesdchar_fd, x, SEEK_SET);
           lseek(aesdchar_fd, y, SEEK_CUR);
       }
-      }
-      if(aesdchar_fd != -1) {
+      // }
+      // if(aesdchar_fd != -1) {
         (void)close(aesdchar_fd);
-      }
+      // }
 
       writeToAesdFile(buf, bytes);
 
