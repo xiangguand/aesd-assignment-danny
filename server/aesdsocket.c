@@ -132,6 +132,7 @@ static void *startSockerServerThread(void *fd_) {
 
     ret = clock_gettime(CLOCK_MONOTONIC, &tp);
     assert(0 == ret);
+#if CONFIG_WRITE_TIMESTAMP_PERIODICLY // write time stamp
     if(fg_start_write_timestamp && tp.tv_sec - prev_tp.tv_sec >= 10) {
       DEBUG_PRINTF("===== Write time =====\n");
       ret = pthread_mutex_lock(&file_mutex);
@@ -150,6 +151,7 @@ static void *startSockerServerThread(void *fd_) {
       DEBUG_PRINTF("===== UNLOCK =====\n");
       prev_tp.tv_sec = tp.tv_sec;
     }
+#endif /* CONFIG_WRITE_TIMESTAMP_PERIODICLY */
   }
   disposeThreadPara(head);
   DEBUG_PRINTF("End server handler\n");

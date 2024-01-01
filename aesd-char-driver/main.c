@@ -77,7 +77,7 @@ loff_t aesd_llseek(struct file *filp, loff_t offset, int whence) {
     return filp->f_pos;
 }
 
-long aesd_ioctl (struct file *filp, unsigned int cmd, unsigned long arg)
+long aesd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
     PDEBUG("cmd: %lu, arg: %ld", cmd, arg);
 
