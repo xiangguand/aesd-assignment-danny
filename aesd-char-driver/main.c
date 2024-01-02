@@ -60,10 +60,15 @@ int aesd_release(struct inode *inode, struct file *filp)
 
 loff_t aesd_llseek(struct file *filp, loff_t offset, int whence) {
     PDEBUG("f_pos: %lu, offset: %ld, whence: %d", filp->f_pos, offset, whence);
+    int i;
 
     switch (whence) {
     case SEEK_SET:
-        filp->f_pos = offset;
+        filp->f_pos = 0;
+        for(i=0;i<offset&&i<AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;i++) {
+            filp->f_pos += aesd_device.cir_buf_.entry[i].size;
+        }
+        PDEBUG("SEEK_SET: %ld\n", filp->f_pos);
         break;
     case SEEK_CUR:
         filp->f_pos += offset;
