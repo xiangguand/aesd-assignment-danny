@@ -27,7 +27,7 @@
 #include <syslog.h>
 
 /* Force close the DEBUG_PRINTF */
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG
 #define DEBUG_PRINTF(...) printf(__VA_ARGS__)
 #else

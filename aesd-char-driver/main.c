@@ -39,9 +39,6 @@ static struct aesd_dev aesd_device = {.is_open_ = false};
 int aesd_open(struct inode *inode, struct file *filp)
 {
     PDEBUG("open");
-    /**
-     * TODO: handle open
-     */
     if(aesd_device.is_open_) {
         // device is already open
         return -EBUSY;
