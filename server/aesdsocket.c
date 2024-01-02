@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/ioctl.h>
 #include <libgen.h>
 #include <string.h>
 #include <dirent.h>
@@ -22,6 +23,9 @@
 #include <netdb.h>
 
 #include "thread_para.h"
+
+#include "../aesd-char-driver/aesd_ioctl.h"
+
 
 /* Syslog, refer from https://linux.die.net/man/3/syslog */
 #include <syslog.h>
@@ -195,8 +199,10 @@ static void *SocketClientThread(void * fd_) {
       if(aesdchar_fd != -1) {
         // aesdchar driver is available
         if(handle_aesdchar_ioseekto(buf, &x, &y)) {
-          lseek(aesdchar_fd, x, SEEK_SET);
-          lseek(aesdchar_fd, y, SEEK_CUR);
+          // lseek(aesdchar_fd, x, SEEK_SET);
+          // lseek(aesdchar_fd, y, SEEK_CUR);
+          struct aesd_seekto seekto = {.write_cmd = x, .write_cmd_offset = y};
+          (void)ioctl(aesdchar_fd, AESDCHAR_IOCSEEKTO, &seekto);
           special_cmd = true;
         }
       }

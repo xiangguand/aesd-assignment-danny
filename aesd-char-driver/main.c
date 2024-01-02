@@ -57,35 +57,60 @@ int aesd_release(struct inode *inode, struct file *filp)
 
 loff_t aesd_llseek(struct file *filp, loff_t offset, int whence) {
     PDEBUG("f_pos: %lu, offset: %ld, whence: %d", filp->f_pos, offset, whence);
-    int i;
 
+    int i;
+    loff_t ret = 0;
     switch (whence) {
     case SEEK_SET:
-        filp->f_pos = 0;
-        for(i=0;i<offset&&i<AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;i++) {
-            filp->f_pos += aesd_device.cir_buf_.entry[i].size;
-        }
-        PDEBUG("SEEK_SET: %ld\n", filp->f_pos);
+        ret = offset;
         break;
     case SEEK_CUR:
-        filp->f_pos += offset;
+        ret = filp->f_pos + offset;
         break;
     case SEEK_END:
+        for(i=0;i<AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;i++) {
+            ret += aesd_device.cir_buf_.entry[i].size;
+        }
         break;
     default:
         return -EINVAL;
     }
+    if(ret < 0) {
+        return -EINVAL;
+    }
 
-    return filp->f_pos;
+    filp->f_pos = ret;
+
+    return ret;
 }
 
 long aesd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
     PDEBUG("cmd: %lu, arg: %ld", cmd, arg);
 
-    /* Return -EINVAL if parameters out of range */
+    struct aesd_seekto seekto;
+    long retval = -EINVAL;
+    int i;
 
-    return 0;
+    PDEBUG("ioctl: cmd is seekto? %d", cmd == AESDCHAR_IOCSEEKTO);
+    switch (cmd) {
+    case AESDCHAR_IOCSEEKTO:
+        if (copy_from_user(&seekto, (const void *)arg, sizeof(seekto)) != 0) {
+            retval = -ERESTARTSYS;
+            return retval;
+        }
+        PDEBUG("write cmd=%d write cmd offset=%d", seekto.write_cmd, seekto.write_cmd_offset);
+
+        filp->f_pos = 0;
+        for(i=0;i<seekto.write_cmd&&i<AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;i++) {
+            filp->f_pos += aesd_device.cir_buf_.entry[i].size;
+        }
+        filp->f_pos += seekto.write_cmd_offset;
+
+        break;
+    }
+
+    return retval;
 }
 
 ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
